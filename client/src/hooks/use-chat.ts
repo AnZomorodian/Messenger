@@ -129,3 +129,68 @@ export function useHeartbeat(userId: number | undefined) {
     refetchInterval: 10000,
   });
 }
+
+export function useAddReaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, userId, emoji }: { messageId: number; userId: number; emoji: string }) => {
+      const res = await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, userId, emoji }),
+      });
+      if (!res.ok) throw new Error("Failed to add reaction");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}
+
+export function useRemoveReaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, userId, emoji }: { messageId: number; userId: number; emoji: string }) => {
+      const res = await fetch("/api/reactions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, userId, emoji }),
+      });
+      if (!res.ok) throw new Error("Failed to remove reaction");
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}
+
+export function useUploadImage() {
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const res = await fetch("/api/upload", {
+              method: "POST",
+              headers: { "Content-Type": "text/plain" },
+              body: reader.result as string,
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.message || "Upload failed");
+            }
+            const data = await res.json();
+            resolve(data.url);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    },
+  });
+}

@@ -1,4 +1,4 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -7,25 +7,33 @@ export interface IStorage {
   getActiveUsers(): Promise<User[]>;
   updateUserActivity(userId: number): Promise<void>;
   
-  getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User } })[]>;
+  getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, content: string): Promise<Message | undefined>;
   deleteMessage(id: number): Promise<boolean>;
+  
+  getReactions(messageId: number): Promise<Reaction[]>;
+  addReaction(reaction: InsertReaction): Promise<Reaction>;
+  removeReaction(messageId: number, userId: number, emoji: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private messages: Map<number, Message>;
+  private reactions: Map<number, Reaction>;
   private userActivity: Map<number, Date>;
   private currentUserId: number;
   private currentMessageId: number;
+  private currentReactionId: number;
 
   constructor() {
     this.users = new Map();
     this.messages = new Map();
+    this.reactions = new Map();
     this.userActivity = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
+    this.currentReactionId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -67,7 +75,7 @@ export class MemStorage implements IStorage {
     this.userActivity.set(userId, new Date());
   }
 
-  async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User } })[]> {
+  async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] })[]> {
     const msgs = Array.from(this.messages.values());
     return msgs.map(msg => {
       const user = this.users.get(msg.userId);
@@ -81,10 +89,12 @@ export class MemStorage implements IStorage {
           };
         }
       }
+      const msgReactions = Array.from(this.reactions.values()).filter(r => r.messageId === msg.id);
       return {
         ...msg,
         user,
-        replyTo: replyToData
+        replyTo: replyToData,
+        reactions: msgReactions
       };
     }).sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
   }
@@ -94,6 +104,7 @@ export class MemStorage implements IStorage {
     const message: Message = { 
       ...insertMessage, 
       id, 
+      imageUrl: insertMessage.imageUrl ?? null,
       replyToId: insertMessage.replyToId ?? null,
       isEdited: false,
       timestamp: new Date() 
@@ -112,6 +123,34 @@ export class MemStorage implements IStorage {
 
   async deleteMessage(id: number): Promise<boolean> {
     return this.messages.delete(id);
+  }
+
+  async getReactions(messageId: number): Promise<Reaction[]> {
+    return Array.from(this.reactions.values()).filter(r => r.messageId === messageId);
+  }
+
+  async addReaction(insertReaction: InsertReaction): Promise<Reaction> {
+    const existing = Array.from(this.reactions.values()).find(
+      r => r.messageId === insertReaction.messageId && 
+           r.userId === insertReaction.userId && 
+           r.emoji === insertReaction.emoji
+    );
+    if (existing) return existing;
+    
+    const id = this.currentReactionId++;
+    const reaction: Reaction = { ...insertReaction, id };
+    this.reactions.set(id, reaction);
+    return reaction;
+  }
+
+  async removeReaction(messageId: number, userId: number, emoji: string): Promise<boolean> {
+    const reaction = Array.from(this.reactions.values()).find(
+      r => r.messageId === messageId && r.userId === userId && r.emoji === emoji
+    );
+    if (reaction) {
+      return this.reactions.delete(reaction.id);
+    }
+    return false;
   }
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,9 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<(Message & { user?: User }) | null>(null);
   const [editingMessage, setEditingMessage] = useState<(Message & { user?: User }) | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load user session
   useEffect(() => {
@@ -56,7 +59,54 @@ export default function Chat() {
   const { data: messages = [], isLoading: isLoadingMessages } = useMessages();
   const sendMessage = useSendMessage();
   const updateMessage = useUpdateMessage();
+  const addReaction = useAddReaction();
+  const removeReaction = useRemoveReaction();
+  const uploadImage = useUploadImage();
   useHeartbeat(user?.id);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please select an image under 2MB.",
+      });
+      return;
+    }
+    
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file",
+        description: "Please select an image file.",
+      });
+      return;
+    }
+    
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleReact = (messageId: number, emoji: string) => {
+    if (!user) return;
+    addReaction.mutate({ messageId, userId: user.id, emoji });
+  };
+
+  const handleRemoveReact = (messageId: number, emoji: string) => {
+    if (!user) return;
+    removeReaction.mutate({ messageId, userId: user.id, emoji });
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -87,26 +137,47 @@ export default function Chat() {
         }
       );
     } else {
-      sendMessage.mutate(
-        { 
-          content, 
-          userId: user.id,
-          replyToId: replyTo?.id || null 
-        },
-        {
-          onSuccess: () => {
-            setContent("");
-            setReplyTo(null);
-          },
-          onError: () => {
+      const sendWithImage = async () => {
+        let imageUrl: string | null = null;
+        
+        if (selectedImage) {
+          try {
+            imageUrl = await uploadImage.mutateAsync(selectedImage);
+          } catch (e) {
             toast({
               variant: "destructive",
-              title: "Failed to send",
-              description: "Please try again.",
+              title: "Upload failed",
+              description: "Could not upload image. Please try again.",
             });
-          },
+            return;
+          }
         }
-      );
+        
+        sendMessage.mutate(
+          { 
+            content: content || (imageUrl ? "" : ""), 
+            userId: user.id,
+            replyToId: replyTo?.id || null,
+            imageUrl
+          },
+          {
+            onSuccess: () => {
+              setContent("");
+              setReplyTo(null);
+              clearImage();
+            },
+            onError: () => {
+              toast({
+                variant: "destructive",
+                title: "Failed to send",
+                description: "Please try again.",
+              });
+            },
+          }
+        );
+      };
+      
+      sendWithImage();
     }
   };
 
@@ -154,7 +225,7 @@ export default function Chat() {
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="font-display font-bold text-xl tracking-tight">PrismChat</h2>
+            <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -216,7 +287,7 @@ export default function Chat() {
             >
               <Users className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-lg">PrismChat</h1>
+            <h1 className="font-display font-bold text-lg">OCHAT</h1>
           </div>
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm"
@@ -252,8 +323,11 @@ export default function Chat() {
                     key={msg.id}
                     message={msg}
                     isCurrentUser={msg.userId === user.id}
+                    currentUserId={user.id}
                     onReply={handleReply}
                     onEdit={handleEdit}
+                    onReact={handleReact}
+                    onRemoveReact={handleRemoveReact}
                   />
                 ))
               )}
@@ -296,10 +370,44 @@ export default function Chat() {
               )}
             </AnimatePresence>
 
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              accept="image/*"
+              className="hidden"
+            />
+            
+            {imagePreview && (
+              <div className="relative mb-3 inline-block">
+                <img src={imagePreview} alt="Preview" className="max-h-32 rounded-lg" />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
             <form 
               onSubmit={handleSend}
               className="relative flex items-center gap-3"
             >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!!editingMessage || uploadImage.isPending}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+              >
+                {uploadImage.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ImagePlus className="w-5 h-5" />
+                )}
+              </button>
+              
               <div className="relative flex-1 flex items-center">
                 <input
                   type="text"
@@ -338,10 +446,10 @@ export default function Chat() {
               </div>
               <button
                 type="submit"
-                disabled={!content.trim() || sendMessage.isPending || updateMessage.isPending}
+                disabled={(!content.trim() && !selectedImage) || sendMessage.isPending || updateMessage.isPending || uploadImage.isPending}
                 className="p-4 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:transform-none transition-all duration-200"
               >
-                {sendMessage.isPending || updateMessage.isPending ? (
+                {sendMessage.isPending || updateMessage.isPending || uploadImage.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <Send className="w-5 h-5" />

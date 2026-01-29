@@ -1,17 +1,39 @@
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Message, User } from "@shared/schema";
-import { Edit2, Reply, CornerDownRight } from "lucide-react";
+import type { Message, User, Reaction } from "@shared/schema";
+import { Edit2, Reply, CornerDownRight, SmilePlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 interface MessageBubbleProps {
-  message: Message & { user?: User, replyTo?: Message & { user?: User } };
+  message: Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] };
   isCurrentUser: boolean;
+  currentUserId?: number;
   onReply?: (message: Message & { user?: User }) => void;
   onEdit?: (message: Message & { user?: User }) => void;
+  onReact?: (messageId: number, emoji: string) => void;
+  onRemoveReact?: (messageId: number, emoji: string) => void;
 }
 
-export function MessageBubble({ message, isCurrentUser, onReply, onEdit }: MessageBubbleProps) {
+export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, onEdit, onReact, onRemoveReact }: MessageBubbleProps) {
+  const groupedReactions = (message.reactions || []).reduce((acc, r) => {
+    if (!acc[r.emoji]) acc[r.emoji] = [];
+    acc[r.emoji].push(r.userId);
+    return acc;
+  }, {} as Record<string, number[]>);
+
+  const handleReaction = (emoji: string) => {
+    if (!currentUserId) return;
+    const userReacted = groupedReactions[emoji]?.includes(currentUserId);
+    if (userReacted) {
+      onRemoveReact?.(message.id, emoji);
+    } else {
+      onReact?.(message.id, emoji);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -57,6 +79,29 @@ export function MessageBubble({ message, isCurrentUser, onReply, onEdit }: Messa
             "opacity-0 group-hover:opacity-100 transition-opacity flex gap-1",
             isCurrentUser ? "flex-row-reverse" : "flex-row"
           )}>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white">
+                  <SmilePlus className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2 bg-zinc-900 border-zinc-800">
+                <div className="flex gap-1">
+                  {QUICK_REACTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleReaction(emoji)}
+                      className={cn(
+                        "p-1.5 hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-90",
+                        groupedReactions[emoji]?.includes(currentUserId || 0) && "bg-primary/20"
+                      )}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <button 
               onClick={() => onReply?.(message)}
               className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white"
@@ -81,7 +126,14 @@ export function MessageBubble({ message, isCurrentUser, onReply, onEdit }: Messa
                 : "bg-secondary/80 backdrop-blur-md text-secondary-foreground rounded-tl-sm border border-white/5"
             )}
           >
-            {message.content}
+            {message.imageUrl && (
+              <img 
+                src={message.imageUrl} 
+                alt="Shared image" 
+                className="max-w-full rounded-lg mb-2 max-h-64 object-contain"
+              />
+            )}
+            {message.content && <p>{message.content}</p>}
             
             <div className={cn(
               "text-[10px] opacity-50 mt-1 w-full flex justify-between items-center gap-2",
@@ -94,6 +146,27 @@ export function MessageBubble({ message, isCurrentUser, onReply, onEdit }: Messa
             </div>
           </div>
         </div>
+
+        {Object.keys(groupedReactions).length > 0 && (
+          <div className={cn(
+            "flex flex-wrap gap-1 mt-1",
+            isCurrentUser ? "mr-4 justify-end" : "ml-4"
+          )}>
+            {Object.entries(groupedReactions).map(([emoji, userIds]) => (
+              <button
+                key={emoji}
+                onClick={() => handleReaction(emoji)}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/10 hover:bg-white/20 transition-colors",
+                  userIds.includes(currentUserId || 0) && "bg-primary/30 hover:bg-primary/40"
+                )}
+              >
+                <span>{emoji}</span>
+                <span className="text-white/60">{userIds.length}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );

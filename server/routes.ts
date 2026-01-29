@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { insertUserSchema, insertMessageSchema } from "@shared/schema";
+import { insertUserSchema, insertMessageSchema, insertReactionSchema } from "@shared/schema";
+import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   
@@ -71,6 +73,85 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const success = await storage.deleteMessage(id);
     if (!success) return res.status(404).json({ message: "Not found" });
     res.status(204).end();
+  });
+
+  app.post("/api/reactions", async (req, res) => {
+    try {
+      const input = insertReactionSchema.parse(req.body);
+      const reaction = await storage.addReaction(input);
+      res.status(201).json(reaction);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid reaction" });
+    }
+  });
+
+  app.delete("/api/reactions", async (req, res) => {
+    try {
+      const { messageId, userId, emoji } = req.body;
+      const success = await storage.removeReaction(messageId, userId, emoji);
+      if (!success) return res.status(404).json({ message: "Not found" });
+      res.status(204).end();
+    } catch (e) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  app.post("/api/upload", async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      const maxSize = 2 * 1024 * 1024;
+
+      req.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxSize) {
+          res.status(413).json({ message: "File too large. Max 2MB allowed." });
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      req.on("end", () => {
+        if (res.headersSent) return;
+        
+        const buffer = Buffer.concat(chunks);
+        const base64Data = buffer.toString();
+        const matches = base64Data.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,(.+)$/);
+        
+        if (!matches) {
+          return res.status(400).json({ message: "Invalid image format" });
+        }
+        
+        const ext = matches[1];
+        const data = matches[2];
+        const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const filepath = path.join(uploadsDir, filename);
+        
+        fs.writeFileSync(filepath, Buffer.from(data, "base64"));
+        res.json({ url: `/uploads/${filename}` });
+      });
+
+      req.on("error", () => {
+        res.status(500).json({ message: "Upload failed" });
+      });
+    } catch (e) {
+      res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  app.use("/uploads", (req, res, next) => {
+    const filePath = path.join(uploadsDir, req.path);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).json({ message: "Not found" });
+    }
   });
 
   return httpServer;

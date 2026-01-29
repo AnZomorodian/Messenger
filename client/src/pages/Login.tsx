@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useLogin } from "@/hooks/use-chat";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -60,18 +60,15 @@ export default function Login() {
         className="glass-panel w-full max-w-md p-8 rounded-3xl relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-purple-600 mb-4 shadow-lg shadow-primary/25">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold mb-2 font-display bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-            PrismChat ✨
+          <h1 className="text-5xl font-bold mb-3 font-display bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+            OCHAT
           </h1>
-          <p className="text-muted-foreground">Join the conversation in color 🎨💬</p>
+          <p className="text-muted-foreground text-sm">Simple. Fast. Connected.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium ml-1">Choose your alias 🏷️</label>
+            <label className="text-sm font-medium ml-1">Username</label>
             <input
               type="text"
               value={username}
@@ -83,7 +80,7 @@ export default function Login() {
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium ml-1">Pick your vibe 🌈</label>
+            <label className="text-sm font-medium ml-1">Color</label>
             <ColorPicker
               selectedColor={color}
               onSelect={setColor}
@@ -102,7 +99,7 @@ export default function Login() {
                 Joining...
               </>
             ) : (
-              "Enter Chat Room 🚀"
+              "Join Chat"
             )}
           </button>
         </form>
