@@ -429,9 +429,9 @@ export default function Chat() {
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-2 bg-zinc-900 border-zinc-800 backdrop-blur-xl">
                       <div className="grid grid-cols-8 gap-1 max-h-64 overflow-y-auto scrollbar-thin p-1">
-                        {EMOJIS.map((emoji) => (
+                        {EMOJIS.map((emoji, idx) => (
                           <button
-                            key={emoji}
+                            key={`emoji-${idx}`}
                             type="button"
                             onClick={() => setContent(prev => prev + emoji)}
                             className="p-2 hover:bg-white/10 rounded-lg text-xl transition-transform active:scale-90 hover:scale-110"
