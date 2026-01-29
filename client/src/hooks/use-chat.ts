@@ -112,3 +112,20 @@ export function useUpdateMessage() {
     },
   });
 }
+
+export function useHeartbeat(userId: number | undefined) {
+  return useQuery({
+    queryKey: ["heartbeat", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      await fetch("/api/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      return { success: true };
+    },
+    enabled: !!userId,
+    refetchInterval: 10000,
+  });
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile } from "lucide-react";
@@ -9,7 +9,23 @@ import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const EMOJIS = ["😀", "😂", "🥰", "😎", "🤔", "🔥", "👍", "❤️", "✨", "🎉", "🚀", "👋"];
+const EMOJIS = [
+  // Smileys
+  "😀", "😁", "😂", "🤣", "😊", "😇", "🥰", "😍", "🤩", "😘", "😋", "🤪",
+  "😎", "🤓", "🧐", "🤔", "🤭", "🤫", "😏", "😌", "😴", "🤤", "😜", "😝",
+  // Emotions
+  "🥺", "😢", "😭", "😤", "😠", "🤯", "😱", "🥶", "🥵", "😈", "👻", "💀",
+  // Hand gestures
+  "👍", "👎", "👋", "🤝", "👏", "🙌", "🤲", "💪", "✌️", "🤞", "🤟", "🤙",
+  // Hearts & Love
+  "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💕", "💗", "💓", "💘",
+  // Activities
+  "🔥", "✨", "⭐", "🌟", "💫", "🎉", "🎊", "🎁", "🎈", "🎯", "🏆", "🥇",
+  // Objects
+  "🚀", "💎", "💰", "🎮", "🎧", "📱", "💻", "🎬", "🎵", "🎶", "☕", "🍕",
+  // Nature
+  "🌈", "🌸", "🌺", "🌻", "🌙", "⚡", "❄️", "🍀", "🌴", "🦋", "🐱", "🐶"
+];
 
 export default function Chat() {
   const [, setLocation] = useLocation();
@@ -40,6 +56,7 @@ export default function Chat() {
   const { data: messages = [], isLoading: isLoadingMessages } = useMessages();
   const sendMessage = useSendMessage();
   const updateMessage = useUpdateMessage();
+  useHeartbeat(user?.id);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -151,7 +168,7 @@ export default function Chat() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Active Users</h3>
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Active Users 🟢</h3>
           {users.map((u) => (
             <div 
               key={u.id} 
@@ -226,8 +243,8 @@ export default function Chat() {
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
                     <Sparkles className="w-8 h-8 text-white/40" />
                   </div>
-                  <p className="text-lg font-medium">No messages yet</p>
-                  <p className="text-sm max-w-xs">Be the first to say hello and start the conversation!</p>
+                  <p className="text-lg font-medium">No messages yet 💬</p>
+                  <p className="text-sm max-w-xs">Be the first to say hello and start the conversation! 👋🎉</p>
                 </motion.div>
               ) : (
                 messages.map((msg) => (
@@ -303,13 +320,13 @@ export default function Chat() {
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-2 bg-zinc-900 border-zinc-800 backdrop-blur-xl">
-                      <div className="grid grid-cols-6 gap-1">
+                      <div className="grid grid-cols-8 gap-1 max-h-64 overflow-y-auto scrollbar-thin p-1">
                         {EMOJIS.map((emoji) => (
                           <button
                             key={emoji}
                             type="button"
                             onClick={() => setContent(prev => prev + emoji)}
-                            className="p-2 hover:bg-white/10 rounded-lg text-xl transition-transform active:scale-90"
+                            className="p-2 hover:bg-white/10 rounded-lg text-xl transition-transform active:scale-90 hover:scale-110"
                           >
                             {emoji}
                           </button>

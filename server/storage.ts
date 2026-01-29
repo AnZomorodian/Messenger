@@ -4,6 +4,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getActiveUsers(): Promise<User[]>;
+  updateUserActivity(userId: number): Promise<void>;
   
   getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User } })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
@@ -14,12 +16,14 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private messages: Map<number, Message>;
+  private userActivity: Map<number, Date>;
   private currentUserId: number;
   private currentMessageId: number;
 
   constructor() {
     this.users = new Map();
     this.messages = new Map();
+    this.userActivity = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
   }
@@ -38,7 +42,29 @@ export class MemStorage implements IStorage {
     const id = this.currentUserId++;
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
+    this.userActivity.set(id, new Date());
     return user;
+  }
+
+  async getActiveUsers(): Promise<User[]> {
+    const now = new Date();
+    const activeThreshold = 60000; // 60 seconds
+    const activeUsers: User[] = [];
+    
+    this.userActivity.forEach((lastSeen, userId) => {
+      if (now.getTime() - lastSeen.getTime() < activeThreshold) {
+        const user = this.users.get(userId);
+        if (user) {
+          activeUsers.push(user);
+        }
+      }
+    });
+    
+    return activeUsers;
+  }
+
+  async updateUserActivity(userId: number): Promise<void> {
+    this.userActivity.set(userId, new Date());
   }
 
   async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User } })[]> {

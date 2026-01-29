@@ -64,14 +64,14 @@ export default function Login() {
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold mb-2 font-display bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
-            PrismChat
+            PrismChat ✨
           </h1>
-          <p className="text-muted-foreground">Join the conversation in color</p>
+          <p className="text-muted-foreground">Join the conversation in color 🎨💬</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium ml-1">Choose your alias</label>
+            <label className="text-sm font-medium ml-1">Choose your alias 🏷️</label>
             <input
               type="text"
               value={username}
@@ -83,7 +83,7 @@ export default function Login() {
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium ml-1">Pick your vibe</label>
+            <label className="text-sm font-medium ml-1">Pick your vibe 🌈</label>
             <ColorPicker
               selectedColor={color}
               onSelect={setColor}
@@ -102,7 +102,7 @@ export default function Login() {
                 Joining...
               </>
             ) : (
-              "Enter Chat Room"
+              "Enter Chat Room 🚀"
             )}
           </button>
         </form>

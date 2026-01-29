@@ -13,6 +13,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       let user = await storage.getUserByUsername(input.username);
       if (!user) {
         user = await storage.createUser(input);
+      } else {
+        await storage.updateUserActivity(user.id);
       }
       res.json(user);
     } catch (e) {
@@ -21,7 +23,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get(api.users.list.path, async (req, res) => {
-    res.json([]); 
+    const activeUsers = await storage.getActiveUsers();
+    res.json(activeUsers); 
+  });
+
+  app.post("/api/heartbeat", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (userId) {
+        await storage.updateUserActivity(userId);
+      }
+      res.json({ success: true });
+    } catch (e) {
+      res.status(400).json({ message: "Invalid request" });
+    }
   });
 
   app.get(api.messages.list.path, async (req, res) => {
