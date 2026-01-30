@@ -1,16 +1,19 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  getActiveUsers(): Promise<User[]>;
+  getActiveUsers(): Promise<(User & { lastSeen?: Date })[]>;
   updateUserActivity(userId: number): Promise<void>;
+  updateUserStatus(userId: number, status: UserStatus): Promise<User | undefined>;
   
-  getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] })[]>;
+  getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, content: string): Promise<Message | undefined>;
   deleteMessage(id: number): Promise<boolean>;
+  lockMessage(messageId: number, lockedByUserId: number): Promise<Message | undefined>;
+  unlockMessage(messageId: number): Promise<Message | undefined>;
   
   getReactions(messageId: number): Promise<Reaction[]>;
   addReaction(reaction: InsertReaction): Promise<Reaction>;
@@ -48,22 +51,22 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, status: "online" };
     this.users.set(id, user);
     this.userActivity.set(id, new Date());
     return user;
   }
 
-  async getActiveUsers(): Promise<User[]> {
+  async getActiveUsers(): Promise<(User & { lastSeen?: Date })[]> {
     const now = new Date();
     const activeThreshold = 60000; // 60 seconds
-    const activeUsers: User[] = [];
+    const activeUsers: (User & { lastSeen?: Date })[] = [];
     
     this.userActivity.forEach((lastSeen, userId) => {
       if (now.getTime() - lastSeen.getTime() < activeThreshold) {
         const user = this.users.get(userId);
         if (user) {
-          activeUsers.push(user);
+          activeUsers.push({ ...user, lastSeen });
         }
       }
     });
@@ -75,7 +78,15 @@ export class MemStorage implements IStorage {
     this.userActivity.set(userId, new Date());
   }
 
-  async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] })[]> {
+  async updateUserStatus(userId: number, status: UserStatus): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updated = { ...user, status };
+    this.users.set(userId, updated);
+    return updated;
+  }
+
+  async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User })[]> {
     const msgs = Array.from(this.messages.values());
     return msgs.map(msg => {
       const user = this.users.get(msg.userId);
@@ -90,11 +101,13 @@ export class MemStorage implements IStorage {
         }
       }
       const msgReactions = Array.from(this.reactions.values()).filter(r => r.messageId === msg.id);
+      const lockedByUser = msg.lockedByUserId ? this.users.get(msg.lockedByUserId) : undefined;
       return {
         ...msg,
         user,
         replyTo: replyToData,
-        reactions: msgReactions
+        reactions: msgReactions,
+        lockedByUser
       };
     }).sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
   }
@@ -107,6 +120,8 @@ export class MemStorage implements IStorage {
       imageUrl: insertMessage.imageUrl ?? null,
       replyToId: insertMessage.replyToId ?? null,
       isEdited: false,
+      isLocked: false,
+      lockedByUserId: null,
       timestamp: new Date() 
     };
     this.messages.set(id, message);
@@ -116,6 +131,7 @@ export class MemStorage implements IStorage {
   async updateMessage(id: number, content: string): Promise<Message | undefined> {
     const message = this.messages.get(id);
     if (!message) return undefined;
+    if (message.isLocked) return undefined;
     const updated = { ...message, content, isEdited: true };
     this.messages.set(id, updated);
     return updated;
@@ -123,6 +139,22 @@ export class MemStorage implements IStorage {
 
   async deleteMessage(id: number): Promise<boolean> {
     return this.messages.delete(id);
+  }
+
+  async lockMessage(messageId: number, lockedByUserId: number): Promise<Message | undefined> {
+    const message = this.messages.get(messageId);
+    if (!message) return undefined;
+    const updated = { ...message, isLocked: true, lockedByUserId };
+    this.messages.set(messageId, updated);
+    return updated;
+  }
+
+  async unlockMessage(messageId: number): Promise<Message | undefined> {
+    const message = this.messages.get(messageId);
+    if (!message) return undefined;
+    const updated = { ...message, isLocked: false, lockedByUserId: null };
+    this.messages.set(messageId, updated);
+    return updated;
   }
 
   async getReactions(messageId: number): Promise<Reaction[]> {

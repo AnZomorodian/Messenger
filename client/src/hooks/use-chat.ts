@@ -194,3 +194,55 @@ export function useUploadImage() {
     },
   });
 }
+
+export function useUpdateStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, status }: { userId: number; status: string }) => {
+      const res = await fetch(`/api/users/${userId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.users.list.path] });
+    },
+  });
+}
+
+export function useLockMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, userId }: { messageId: number; userId: number }) => {
+      const res = await fetch(`/api/messages/${messageId}/lock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) throw new Error("Failed to lock message");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}
+
+export function useUnlockMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: number) => {
+      const res = await fetch(`/api/messages/${messageId}/unlock`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to unlock message");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}

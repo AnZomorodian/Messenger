@@ -2,10 +2,14 @@ import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const userStatuses = ["online", "away", "busy", "offline"] as const;
+export type UserStatus = typeof userStatuses[number];
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   color: text("color").notNull().default("#000000"),
+  status: text("status").notNull().default("online"),
 });
 
 export const messages = pgTable("messages", {
@@ -15,6 +19,8 @@ export const messages = pgTable("messages", {
   imageUrl: text("image_url"),
   replyToId: integer("reply_to_id"),
   isEdited: boolean("is_edited").default(false),
+  isLocked: boolean("is_locked").default(false),
+  lockedByUserId: integer("locked_by_user_id"),
   timestamp: timestamp("timestamp").defaultNow(),
 });
 

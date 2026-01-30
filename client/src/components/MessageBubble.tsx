@@ -2,22 +2,24 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message, User, Reaction } from "@shared/schema";
-import { Edit2, Reply, CornerDownRight, SmilePlus } from "lucide-react";
+import { Edit2, Reply, CornerDownRight, SmilePlus, Download, Lock, Unlock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👏", "🎉"];
 
 interface MessageBubbleProps {
-  message: Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[] };
+  message: Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User };
   isCurrentUser: boolean;
   currentUserId?: number;
   onReply?: (message: Message & { user?: User }) => void;
   onEdit?: (message: Message & { user?: User }) => void;
   onReact?: (messageId: number, emoji: string) => void;
   onRemoveReact?: (messageId: number, emoji: string) => void;
+  onLock?: (messageId: number) => void;
+  onUnlock?: (messageId: number) => void;
 }
 
-export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, onEdit, onReact, onRemoveReact }: MessageBubbleProps) {
+export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, onEdit, onReact, onRemoveReact, onLock, onUnlock }: MessageBubbleProps) {
   const groupedReactions = (message.reactions || []).reduce((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = [];
     acc[r.emoji].push(r.userId);
@@ -33,6 +35,27 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
       onReact?.(message.id, emoji);
     }
   };
+
+  const handleDownload = async () => {
+    if (!message.imageUrl) return;
+    try {
+      const response = await fetch(message.imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `image-${message.id}.${message.imageUrl.split(".").pop()}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Download failed:", e);
+    }
+  };
+
+  const canLock = !isCurrentUser && !message.isLocked;
+  const canUnlock = message.isLocked && message.lockedByUserId === currentUserId;
 
   return (
     <motion.div
@@ -81,15 +104,15 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
           )}>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white">
+                <button className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white" data-testid="button-react">
                   <SmilePlus className="w-3.5 h-3.5" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2 bg-zinc-900 border-zinc-800">
                 <div className="flex gap-1">
-                  {QUICK_REACTIONS.map((emoji) => (
+                  {QUICK_REACTIONS.map((emoji, idx) => (
                     <button
-                      key={emoji}
+                      key={`quick-${idx}`}
                       onClick={() => handleReaction(emoji)}
                       className={cn(
                         "p-1.5 hover:bg-white/10 rounded-lg text-lg transition-transform active:scale-90",
@@ -105,15 +128,37 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
             <button 
               onClick={() => onReply?.(message)}
               className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white"
+              data-testid="button-reply"
             >
               <Reply className="w-3.5 h-3.5" />
             </button>
-            {isCurrentUser && (
+            {isCurrentUser && !message.isLocked && (
               <button 
                 onClick={() => onEdit?.(message)}
                 className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white"
+                data-testid="button-edit"
               >
                 <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canLock && (
+              <button 
+                onClick={() => onLock?.(message.id)}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-yellow-400"
+                title="Lock this message (prevent editing)"
+                data-testid="button-lock"
+              >
+                <Lock className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canUnlock && (
+              <button 
+                onClick={() => onUnlock?.(message.id)}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-yellow-400 hover:text-white"
+                title="Unlock this message"
+                data-testid="button-unlock"
+              >
+                <Unlock className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -123,15 +168,31 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
               "px-4 py-2.5 rounded-2xl shadow-sm text-sm md:text-base break-words relative min-w-[60px]",
               isCurrentUser 
                 ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                : "bg-secondary/80 backdrop-blur-md text-secondary-foreground rounded-tl-sm border border-white/5"
+                : "bg-secondary/80 backdrop-blur-md text-secondary-foreground rounded-tl-sm border border-white/5",
+              message.isLocked && "ring-2 ring-yellow-500/50"
             )}
           >
+            {message.isLocked && (
+              <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1" title={`Locked by ${message.lockedByUser?.username}`}>
+                <Lock className="w-2.5 h-2.5 text-black" />
+              </div>
+            )}
             {message.imageUrl && (
-              <img 
-                src={message.imageUrl} 
-                alt="Shared image" 
-                className="max-w-full rounded-lg mb-2 max-h-64 object-contain"
-              />
+              <div className="relative group/img mb-2">
+                <img 
+                  src={message.imageUrl} 
+                  alt="Shared image" 
+                  className="max-w-full rounded-lg max-h-64 object-contain"
+                />
+                <button
+                  onClick={handleDownload}
+                  className="absolute bottom-2 right-2 p-2 bg-black/70 hover:bg-black/90 rounded-lg opacity-0 group-hover/img:opacity-100 transition-opacity"
+                  title="Download image"
+                  data-testid="button-download-image"
+                >
+                  <Download className="w-4 h-4 text-white" />
+                </button>
+              </div>
             )}
             {message.content && <p>{message.content}</p>}
             

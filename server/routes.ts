@@ -154,5 +154,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.patch("/api/users/:id/status", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+    if (!["online", "away", "busy", "offline"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    const user = await storage.updateUserStatus(id, status);
+    if (!user) return res.status(404).json({ message: "Not found" });
+    res.json(user);
+  });
+
+  app.post("/api/messages/:id/lock", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { userId } = req.body;
+    const message = await storage.lockMessage(id, userId);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
+  app.post("/api/messages/:id/unlock", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const message = await storage.unlockMessage(id);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
   return httpServer;
 }

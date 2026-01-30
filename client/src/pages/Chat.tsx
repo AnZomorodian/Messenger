@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { userStatuses, type UserStatus } from "@shared/schema";
+
+const STATUS_CONFIG: Record<UserStatus, { label: string; color: string; icon: typeof Circle }> = {
+  online: { label: "Online", color: "bg-green-500", icon: Circle },
+  away: { label: "Away", color: "bg-yellow-500", icon: Clock },
+  busy: { label: "Busy", color: "bg-red-500", icon: MinusCircle },
+  offline: { label: "Offline", color: "bg-gray-500", icon: Circle },
+};
 
 const EMOJIS = [
   // Smileys
@@ -62,7 +70,27 @@ export default function Chat() {
   const addReaction = useAddReaction();
   const removeReaction = useRemoveReaction();
   const uploadImage = useUploadImage();
+  const updateStatus = useUpdateStatus();
+  const lockMessage = useLockMessage();
+  const unlockMessage = useUnlockMessage();
   useHeartbeat(user?.id);
+
+  const handleStatusChange = (status: UserStatus) => {
+    if (!user) return;
+    updateStatus.mutate({ userId: user.id, status });
+    const updatedUser = { ...user, status };
+    setUser(updatedUser);
+    localStorage.setItem("chat_user", JSON.stringify(updatedUser));
+  };
+
+  const handleLock = (messageId: number) => {
+    if (!user) return;
+    lockMessage.mutate({ messageId, userId: user.id });
+  };
+
+  const handleUnlock = (messageId: number) => {
+    unlockMessage.mutate(messageId);
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -239,36 +267,72 @@ export default function Chat() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Active Users 🟢</h3>
-          {users.map((u) => (
-            <div 
-              key={u.id} 
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-xl transition-all",
-                u.id === user.id ? "bg-white/10 border border-white/5" : "hover:bg-white/5"
-              )}
-            >
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Active Users</h3>
+          {users.map((u) => {
+            const statusInfo = STATUS_CONFIG[(u.status as UserStatus) || "online"];
+            return (
               <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                style={{ backgroundColor: u.color }}
+                key={u.id} 
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl transition-all",
+                  u.id === user.id ? "bg-white/10 border border-white/5" : "hover:bg-white/5"
+                )}
               >
-                {u.username.substring(0, 2).toUpperCase()}
+                <div className="relative">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                    style={{ backgroundColor: u.color }}
+                  >
+                    {u.username.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background", statusInfo.color)} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate text-sm">
+                    {u.username}
+                    {u.id === user.id && <span className="ml-2 text-xs text-white/40">(You)</span>}
+                  </p>
+                  <p className="text-xs text-white/40 truncate">{statusInfo.label}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate text-sm">
-                  {u.username}
-                  {u.id === user.id && <span className="ml-2 text-xs text-white/40">(You)</span>}
-                </p>
-                <p className="text-xs text-white/40 truncate">Online</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-sm">
+                <span className="text-white/60">Your Status</span>
+                <div className="flex items-center gap-2">
+                  <div className={cn("w-2.5 h-2.5 rounded-full", STATUS_CONFIG[(user?.status as UserStatus) || "online"].color)} />
+                  <span>{STATUS_CONFIG[(user?.status as UserStatus) || "online"].label}</span>
+                </div>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2 bg-zinc-900 border-zinc-800">
+              {userStatuses.map((status) => {
+                const info = STATUS_CONFIG[status];
+                return (
+                  <button
+                    key={status}
+                    onClick={() => handleStatusChange(status)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors text-sm",
+                      user?.status === status && "bg-white/10"
+                    )}
+                  >
+                    <div className={cn("w-2.5 h-2.5 rounded-full", info.color)} />
+                    <span>{info.label}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-sm font-medium"
+            data-testid="button-logout"
           >
             <LogOut className="w-4 h-4" />
             Sign Out
@@ -328,6 +392,8 @@ export default function Chat() {
                     onEdit={handleEdit}
                     onReact={handleReact}
                     onRemoveReact={handleRemoveReact}
+                    onLock={handleLock}
+                    onUnlock={handleUnlock}
                   />
                 ))
               )}
