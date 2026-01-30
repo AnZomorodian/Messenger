@@ -24,14 +24,23 @@ export interface IStorage {
   getDMRequests(userId: number): Promise<(DMRequest & { fromUser?: User, toUser?: User })[]>;
   updateDMRequestStatus(requestId: number, status: DMRequestStatus): Promise<DMRequest | undefined>;
   getAcceptedDMPartners(userId: number): Promise<User[]>;
-  
+
   getDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
   createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  updateDirectMessage(id: number, content: string): Promise<DirectMessage | undefined>;
+  deleteDirectMessage(id: number): Promise<boolean>;
+  lockDirectMessage(messageId: number, lockedByUserId: number): Promise<DirectMessage | undefined>;
+  unlockDirectMessage(messageId: number): Promise<DirectMessage | undefined>;
   pinDirectMessage(messageId: number): Promise<DirectMessage | undefined>;
   unpinDirectMessage(messageId: number): Promise<DirectMessage | undefined>;
   getPinnedDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
   markDirectMessagesAsRead(fromUserId: number, toUserId: number): Promise<void>;
   getUnreadCount(userId: number, fromUserId: number): Promise<number>;
+
+  createWitnessRequest(initiatorId: number, partnerId: number, witnessId: number): Promise<any>;
+  getWitnessRequests(userId: number): Promise<any[]>;
+  updateWitnessRequestStatus(requestId: number, status: string): Promise<any>;
+  getWitnessedChats(userId: number): Promise<any[]>;
   
   createPoll(poll: InsertPoll): Promise<Poll>;
   getPoll(messageId: number): Promise<Poll | undefined>;
@@ -65,6 +74,8 @@ export class MemStorage implements IStorage {
   private currentDirectMessageId: number;
   private currentPollId: number;
   private currentFileId: number;
+  private witnessRequests: Map<number, any>;
+  private groupChats: Map<number, any>;
 
   constructor() {
     this.users = new Map();
@@ -75,6 +86,8 @@ export class MemStorage implements IStorage {
     this.directMessages = new Map();
     this.polls = new Map();
     this.files = new Map();
+    this.witnessRequests = new Map();
+    this.groupChats = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
     this.currentReactionId = 1;
@@ -293,9 +306,48 @@ export class MemStorage implements IStorage {
 
   async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
     const id = this.currentDirectMessageId++;
-    const dm: DirectMessage = { ...message, id, isEdited: false, isPinned: false, isRead: false, timestamp: new Date() };
+    const dm: DirectMessage = { 
+      ...message, 
+      id, 
+      isEdited: false, 
+      isPinned: false, 
+      isRead: false, 
+      isLocked: false,
+      lockedByUserId: null,
+      timestamp: new Date() 
+    };
     this.directMessages.set(id, dm);
     return dm;
+  }
+
+  async updateDirectMessage(id: number, content: string): Promise<DirectMessage | undefined> {
+    const dm = this.directMessages.get(id);
+    if (!dm || dm.isLocked) return undefined;
+    const updated = { ...dm, content, isEdited: true };
+    this.directMessages.set(id, updated);
+    return updated;
+  }
+
+  async deleteDirectMessage(id: number): Promise<boolean> {
+    const dm = this.directMessages.get(id);
+    if (!dm || dm.isLocked) return false;
+    return this.directMessages.delete(id);
+  }
+
+  async lockDirectMessage(messageId: number, lockedByUserId: number): Promise<DirectMessage | undefined> {
+    const dm = this.directMessages.get(messageId);
+    if (!dm) return undefined;
+    const updated = { ...dm, isLocked: true, lockedByUserId };
+    this.directMessages.set(messageId, updated);
+    return updated;
+  }
+
+  async unlockDirectMessage(messageId: number): Promise<DirectMessage | undefined> {
+    const dm = this.directMessages.get(messageId);
+    if (!dm) return undefined;
+    const updated = { ...dm, isLocked: false, lockedByUserId: null };
+    this.directMessages.set(messageId, updated);
+    return updated;
   }
 
   async pinDirectMessage(messageId: number): Promise<DirectMessage | undefined> {
@@ -394,12 +446,27 @@ export class MemStorage implements IStorage {
     return expired;
   }
 
-  async logoutUser(userId: number): Promise<void> {
-    this.userActivity.delete(userId);
-    const user = this.users.get(userId);
-    if (user) {
-      this.users.set(userId, { ...user, status: "offline" });
-    }
+  async createWitnessRequest(initiatorId: number, partnerId: number, witnessId: number): Promise<any> {
+    const id = this.currentDMRequestId++; // Reusing counter for simplicity
+    const request = { id, chatInitiatorId: initiatorId, chatPartnerId: partnerId, witnessId, status: "pending", timestamp: new Date() };
+    this.witnessRequests.set(id, request);
+    return request;
+  }
+
+  async getWitnessRequests(userId: number): Promise<any[]> {
+    return Array.from(this.witnessRequests.values()).filter(r => r.witnessId === userId || r.chatPartnerId === userId);
+  }
+
+  async updateWitnessRequestStatus(requestId: number, status: string): Promise<any> {
+    const request = this.witnessRequests.get(requestId);
+    if (!request) return undefined;
+    const updated = { ...request, status };
+    this.witnessRequests.set(requestId, updated);
+    return updated;
+  }
+
+  async getWitnessedChats(userId: number): Promise<any[]> {
+    return Array.from(this.groupChats.values()).filter(c => c.userIds.includes(userId) || c.witnessId === userId);
   }
 
   async getAllUsers(): Promise<User[]> {

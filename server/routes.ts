@@ -318,6 +318,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(messages);
   });
 
+  app.patch("/api/dm/messages/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { content } = z.object({ content: z.string() }).parse(req.body);
+      const message = await storage.updateDirectMessage(id, content);
+      if (!message) return res.status(404).json({ message: "Not found or locked" });
+      res.json(message);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
+    }
+  });
+
+  app.delete("/api/dm/messages/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const success = await storage.deleteDirectMessage(id);
+    if (!success) return res.status(404).json({ message: "Not found or locked" });
+    res.status(204).end();
+  });
+
+  app.post("/api/dm/messages/:id/lock", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { userId } = req.body;
+    const message = await storage.lockDirectMessage(id, userId);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
+  app.post("/api/dm/messages/:id/unlock", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const message = await storage.unlockDirectMessage(id);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
   app.post("/api/dm/messages", async (req, res) => {
     try {
       const input = insertDirectMessageSchema.parse(req.body);

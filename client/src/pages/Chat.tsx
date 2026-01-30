@@ -82,6 +82,25 @@ export default function Chat() {
       e.preventDefault();
       wrapSelectedText('__');
     }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'h' || e.key === 'H')) {
+      e.preventDefault();
+      const url = prompt("Enter the URL:");
+      if (url) {
+        wrapSelectedTextWithUrl(url);
+      }
+    }
+  };
+
+  const wrapSelectedTextWithUrl = (url: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const text = content;
+    const selectedText = text.substring(start, end) || "link";
+    const wrapped = `[${selectedText}](${url})`;
+    const newText = text.substring(0, start) + wrapped + text.substring(end);
+    setContent(newText);
   };
 
   const wrapSelectedText = (wrapper: string) => {
@@ -300,6 +319,31 @@ export default function Chat() {
 
   const isOffline = user?.status === "offline";
 
+  const renderContent = (content: string) => {
+    // Mentions
+    const parts = content.split(/(@\w+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("@")) {
+        const username = part.substring(1);
+        return <span key={i} className="text-primary font-bold">{part}</span>;
+      }
+      // Hyperlinks [text](url)
+      const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/g);
+      if (linkMatch) {
+         // This is a simplified markdown parser for links
+         const innerParts = part.split(/(\[.*?\]\(.*?\))/g);
+         return innerParts.map((inner, j) => {
+           const match = inner.match(/\[(.*?)\]\((.*?)\)/);
+           if (match) {
+             return <a key={j} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">{match[1]}</a>;
+           }
+           return inner;
+         });
+      }
+      return part;
+    });
+  };
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() && !selectedImage) return;
@@ -493,6 +537,7 @@ export default function Chat() {
             <div>
               <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
               <div className="flex items-center gap-2">
+                <ThemeToggle />
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
