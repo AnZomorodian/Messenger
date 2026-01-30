@@ -808,7 +808,7 @@ export default function Chat() {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <h1 className="font-display font-bold text-lg tracking-tight leading-none mr-2">OCHAT</h1>
           <ThemeToggle className="w-8 h-8" />
           <Button
