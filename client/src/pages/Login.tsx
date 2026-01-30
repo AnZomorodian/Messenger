@@ -4,7 +4,13 @@ import { motion } from "framer-motion";
 import { useLogin } from "@/hooks/use-chat";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
+
+const RESERVED_USERNAMES = [
+  "admin", "administrator", "support", "moderator", "mod", 
+  "system", "bot", "official", "staff", "help", "root",
+  "owner", "ochat", "team", "service", "security"
+];
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -15,11 +21,31 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim()) {
+    const trimmedUsername = username.trim();
+    
+    if (!trimmedUsername) {
       toast({
         variant: "destructive",
         title: "Username required",
         description: "Please enter a username to join the chat.",
+      });
+      return;
+    }
+
+    if (trimmedUsername.length < 2 || trimmedUsername.length > 20) {
+      toast({
+        variant: "destructive",
+        title: "Invalid username",
+        description: "Username must be 2-20 characters long.",
+      });
+      return;
+    }
+
+    if (RESERVED_USERNAMES.includes(trimmedUsername.toLowerCase())) {
+      toast({
+        variant: "destructive",
+        title: "Reserved username",
+        description: "This username is reserved. Please choose another.",
       });
       return;
     }

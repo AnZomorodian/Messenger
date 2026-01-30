@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle } from "lucide-react";
@@ -73,6 +73,7 @@ export default function Chat() {
   const updateStatus = useUpdateStatus();
   const lockMessage = useLockMessage();
   const unlockMessage = useUnlockMessage();
+  const deleteMessage = useDeleteMessage();
   useHeartbeat(user?.id);
 
   const handleStatusChange = (status: UserStatus) => {
@@ -90,6 +91,17 @@ export default function Chat() {
 
   const handleUnlock = (messageId: number) => {
     unlockMessage.mutate(messageId);
+  };
+
+  const handleDelete = (messageId: number) => {
+    deleteMessage.mutate(messageId, {
+      onSuccess: () => {
+        toast({
+          title: "Deleted",
+          description: "Message has been deleted.",
+        });
+      },
+    });
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,8 +138,16 @@ export default function Chat() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleReact = (messageId: number, emoji: string) => {
+  const handleReact = (messageId: number, emoji: string, msgUserId: number) => {
     if (!user) return;
+    if (msgUserId === user.id) {
+      toast({
+        variant: "destructive",
+        title: "Can't react",
+        description: "You cannot react to your own message.",
+      });
+      return;
+    }
     addReaction.mutate({ messageId, userId: user.id, emoji });
   };
 
@@ -143,9 +163,21 @@ export default function Chat() {
     }
   }, [messages]);
 
+  const isOffline = user?.status === "offline";
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !user) return;
+    if (!content.trim() && !selectedImage) return;
+    if (!user) return;
+    
+    if (isOffline) {
+      toast({
+        variant: "destructive",
+        title: "You're offline",
+        description: "Change your status to send messages.",
+      });
+      return;
+    }
 
     if (editingMessage) {
       updateMessage.mutate(
@@ -342,6 +374,13 @@ export default function Chat() {
 
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-transparent relative">
+        {/* Offline Banner */}
+        {isOffline && (
+          <div className="bg-gray-600 text-white text-center py-2 px-4 text-sm font-medium z-40">
+            You're offline. Change your status to send messages.
+          </div>
+        )}
+        
         {/* Mobile Header */}
         <header className="md:hidden h-16 glass-panel border-b border-white/10 flex items-center px-4 justify-between z-30">
           <div className="flex items-center gap-3">
@@ -390,10 +429,11 @@ export default function Chat() {
                     currentUserId={user.id}
                     onReply={handleReply}
                     onEdit={handleEdit}
-                    onReact={handleReact}
+                    onReact={(messageId, emoji) => handleReact(messageId, emoji, msg.userId)}
                     onRemoveReact={handleRemoveReact}
                     onLock={handleLock}
                     onUnlock={handleUnlock}
+                    onDelete={handleDelete}
                   />
                 ))
               )}
@@ -464,7 +504,7 @@ export default function Chat() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={!!editingMessage || uploadImage.isPending}
+                disabled={!!editingMessage || uploadImage.isPending || isOffline}
                 className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
               >
                 {uploadImage.isPending ? (
@@ -479,9 +519,9 @@ export default function Chat() {
                   type="text"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder={editingMessage ? "Edit message..." : "Type a message..."}
-                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary/50 text-white placeholder:text-white/30 rounded-2xl px-6 py-4 pr-14 outline-none transition-all shadow-inner"
-                  disabled={sendMessage.isPending || updateMessage.isPending}
+                  placeholder={isOffline ? "You're offline..." : editingMessage ? "Edit message..." : "Type a message..."}
+                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary/50 text-white placeholder:text-white/30 rounded-2xl px-6 py-4 pr-14 outline-none transition-all shadow-inner disabled:opacity-50"
+                  disabled={sendMessage.isPending || updateMessage.isPending || isOffline}
                 />
                 <div className="absolute right-2">
                   <Popover>
@@ -512,7 +552,7 @@ export default function Chat() {
               </div>
               <button
                 type="submit"
-                disabled={(!content.trim() && !selectedImage) || sendMessage.isPending || updateMessage.isPending || uploadImage.isPending}
+                disabled={(!content.trim() && !selectedImage) || sendMessage.isPending || updateMessage.isPending || uploadImage.isPending || isOffline}
                 className="p-4 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:transform-none transition-all duration-200"
               >
                 {sendMessage.isPending || updateMessage.isPending || uploadImage.isPending ? (

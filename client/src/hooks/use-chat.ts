@@ -246,3 +246,19 @@ export function useUnlockMessage() {
     },
   });
 }
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: number) => {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete message");
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message, User, Reaction } from "@shared/schema";
-import { Edit2, Reply, CornerDownRight, SmilePlus, Download, Lock, Unlock } from "lucide-react";
+import { Edit2, Reply, CornerDownRight, SmilePlus, Download, Lock, Unlock, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👏", "🎉"];
@@ -17,9 +17,10 @@ interface MessageBubbleProps {
   onRemoveReact?: (messageId: number, emoji: string) => void;
   onLock?: (messageId: number) => void;
   onUnlock?: (messageId: number) => void;
+  onDelete?: (messageId: number) => void;
 }
 
-export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, onEdit, onReact, onRemoveReact, onLock, onUnlock }: MessageBubbleProps) {
+export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, onEdit, onReact, onRemoveReact, onLock, onUnlock, onDelete }: MessageBubbleProps) {
   const groupedReactions = (message.reactions || []).reduce((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = [];
     acc[r.emoji].push(r.userId);
@@ -159,6 +160,16 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
                 data-testid="button-unlock"
               >
                 <Unlock className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {isCurrentUser && (
+              <button 
+                onClick={() => onDelete?.(message.id)}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-red-400"
+                title="Delete message"
+                data-testid="button-delete"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
