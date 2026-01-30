@@ -5,7 +5,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile, useUpdateDM, useDeleteDM, useLockDM, useUnlockDM } from "@/hooks/use-chat";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2 } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2, Timer, Bell, Play, Pause } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,6 +72,11 @@ export default function Chat() {
   const generalFileInputRef = useRef<HTMLInputElement>(null);
   const [showWitnessModal, setShowWitnessModal] = useState(false);
   const [selectedWitness, setSelectedWitness] = useState<User | null>(null);
+  const [showTimerModal, setShowTimerModal] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(5);
+  const [activeTimer, setActiveTimer] = useState<{ endTime: number; label: string } | null>(null);
+  const [timerRemaining, setTimerRemaining] = useState<number>(0);
+  const [lastCheckedMentions, setLastCheckedMentions] = useState<number[]>([]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -339,6 +344,39 @@ export default function Chat() {
     }
   }, [messages]);
 
+  // Mention notifications
+  useEffect(() => {
+    if (!user || !messages.length) return;
+    const mentionRegex = new RegExp(`@${user.username}\\b`, 'i');
+    const newMentions = messages.filter(
+      (msg) => msg.userId !== user.id && mentionRegex.test(msg.content || '') && !lastCheckedMentions.includes(msg.id)
+    );
+    if (newMentions.length > 0) {
+      newMentions.forEach((msg) => {
+        const sender = users.find((u) => u.id === msg.userId);
+        toast({
+          title: "You were mentioned!",
+          description: `${sender?.username || 'Someone'} mentioned you in a message`,
+        });
+      });
+      setLastCheckedMentions((prev) => [...prev, ...newMentions.map((m) => m.id)]);
+    }
+  }, [messages, user, users, lastCheckedMentions, toast]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!activeTimer) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, activeTimer.endTime - Date.now());
+      setTimerRemaining(remaining);
+      if (remaining === 0) {
+        toast({ title: "Timer finished!", description: activeTimer.label || "Your timer is complete!" });
+        setActiveTimer(null);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeTimer, toast]);
+
   const isOffline = user?.status === "offline";
 
   const renderContent = (content: string) => {
@@ -368,6 +406,17 @@ export default function Chat() {
     e.preventDefault();
     if (!content.trim() && !selectedImage) return;
     if (!user) return;
+    
+    // Block self-mentions
+    const selfMentionRegex = new RegExp(`@${user.username}\\b`, 'i');
+    if (selfMentionRegex.test(content)) {
+      toast({
+        variant: "destructive",
+        title: "Can't mention yourself",
+        description: "You cannot mention yourself in messages.",
+      });
+      return;
+    }
     
     if (isOffline) {
       toast({
@@ -938,6 +987,19 @@ export default function Chat() {
               >
                 <BarChart3 className="w-5 h-5" />
               </button>
+
+              <button
+                type="button"
+                onClick={() => setShowTimerModal(true)}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all relative"
+                title="Set timer"
+                data-testid="button-set-timer"
+              >
+                <Timer className="w-5 h-5" />
+                {activeTimer && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
+                )}
+              </button>
               
               <div className="relative flex-1 flex items-center">
                 <input
@@ -1288,6 +1350,127 @@ export default function Chat() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Timer Modal */}
+      <AnimatePresence>
+        {showTimerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+            onClick={() => setShowTimerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-zinc-900 dark:bg-zinc-900 bg-white rounded-2xl p-6 w-full max-w-sm mx-4 space-y-4 border border-white/10 dark:border-white/10 border-gray-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                  <Timer className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">Set Timer</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-white/60 dark:text-white/60 text-gray-600 mb-2 block">Minutes</label>
+                  <div className="flex items-center gap-3">
+                    {[1, 5, 10, 15, 30].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => setTimerMinutes(mins)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm transition-colors",
+                          timerMinutes === mins
+                            ? "bg-primary text-white"
+                            : "bg-white/10 dark:bg-white/10 bg-gray-100 hover:bg-white/20 dark:hover:bg-white/20 hover:bg-gray-200"
+                        )}
+                        data-testid={`button-timer-${mins}`}
+                      >
+                        {mins}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={timerMinutes}
+                  onChange={(e) => setTimerMinutes(Math.max(1, Math.min(120, parseInt(e.target.value) || 1)))}
+                  className="w-full bg-white/5 dark:bg-white/5 bg-gray-100 border border-white/10 dark:border-white/10 border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-primary/50 text-foreground"
+                  placeholder="Custom minutes..."
+                  data-testid="input-timer-custom"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowTimerModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/5 dark:bg-white/5 bg-gray-100 hover:bg-white/10 dark:hover:bg-white/10 hover:bg-gray-200 transition-colors text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTimer({
+                      endTime: Date.now() + timerMinutes * 60 * 1000,
+                      label: `${timerMinutes} minute timer`
+                    });
+                    setShowTimerModal(false);
+                    toast({ title: "Timer started!", description: `${timerMinutes} minute timer is running` });
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white"
+                  data-testid="button-start-timer"
+                >
+                  <Play className="w-4 h-4 inline mr-2" />
+                  Start Timer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active Timer Display */}
+      <AnimatePresence>
+        {activeTimer && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 right-6 bg-zinc-900 dark:bg-zinc-900 bg-white rounded-2xl p-4 border border-white/10 dark:border-white/10 border-gray-200 shadow-xl z-40"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/20 text-primary animate-pulse">
+                <Timer className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm text-white/60 dark:text-white/60 text-gray-600">{activeTimer.label}</p>
+                <p className="text-2xl font-bold text-foreground font-mono">
+                  {Math.floor(timerRemaining / 60000)}:{String(Math.floor((timerRemaining % 60000) / 1000)).padStart(2, '0')}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveTimer(null);
+                  toast({ title: "Timer cancelled" });
+                }}
+                className="p-2 hover:bg-white/10 dark:hover:bg-white/10 hover:bg-gray-100 rounded-lg text-red-400"
+                title="Cancel timer"
+                data-testid="button-cancel-timer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

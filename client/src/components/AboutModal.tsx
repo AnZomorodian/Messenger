@@ -1,94 +1,108 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Info, Github, Heart, Code } from "lucide-react";
+import { Info, Heart, Code, MessageCircle, Users, Image, BarChart3, Timer, Lock, Palette, Shield, Sparkles } from "lucide-react";
 
 export function AboutModal() {
   return (
     <Dialog>
       <DialogTrigger asChild>
         <button
-          className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+          className="p-2 hover:bg-white/10 dark:hover:bg-white/10 hover:bg-gray-100 rounded-lg text-white/60 dark:text-white/60 text-gray-500 hover:text-white dark:hover:text-white hover:text-gray-700 transition-colors"
           title="About OCHAT"
           data-testid="button-about"
         >
           <Info className="w-5 h-5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+      <DialogContent className="bg-zinc-900 dark:bg-zinc-900 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200 max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-display flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
-              <Code className="w-5 h-5 text-white" />
+          <DialogTitle className="text-2xl font-display flex items-center gap-3 text-foreground">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-primary/30">
+              <MessageCircle className="w-6 h-6 text-white" />
             </div>
-            About OCHAT
+            OCHAT
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 pt-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold text-white/90">Developer</h3>
-            <p className="text-white/70 flex items-center gap-2">
-              <Heart className="w-4 h-4 text-red-400" />
-              Built with love by <span className="font-semibold text-primary">Artin Zomorodian</span>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20">
+            <p className="text-white/80 dark:text-white/80 text-gray-700 flex items-center gap-2">
+              <Heart className="w-4 h-4 text-red-400 animate-pulse" />
+              Built with love by <span className="font-bold text-primary">Artin Zomorodian</span>
             </p>
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-semibold text-white/90">About This App</h3>
-            <p className="text-white/60 text-sm leading-relaxed">
-              OCHAT is a real-time messenger application built with modern web technologies. 
-              It features instant messaging, text formatting (bold, italic, underline), 
-              emoji reactions, image sharing, direct messages, and user status management.
+            <h3 className="font-semibold text-white/90 dark:text-white/90 text-gray-800 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-yellow-400" />
+              What is OCHAT?
+            </h3>
+            <p className="text-white/60 dark:text-white/60 text-gray-600 text-sm leading-relaxed">
+              OCHAT is a modern real-time messenger application featuring instant messaging, 
+              rich text formatting, emoji reactions, media sharing, polls, timers, and secure 
+              direct messaging with advanced privacy controls.
             </p>
           </div>
           
+          <div className="space-y-3">
+            <h3 className="font-semibold text-white/90 dark:text-white/90 text-gray-800">Features</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { icon: MessageCircle, label: "Real-time Chat", color: "text-blue-400" },
+                { icon: Users, label: "@Mentions", color: "text-green-400" },
+                { icon: Image, label: "Media Sharing", color: "text-purple-400" },
+                { icon: BarChart3, label: "Polls", color: "text-yellow-400" },
+                { icon: Timer, label: "Timers", color: "text-orange-400" },
+                { icon: Lock, label: "Message Lock", color: "text-red-400" },
+                { icon: Palette, label: "Dark/Light Mode", color: "text-cyan-400" },
+                { icon: Shield, label: "Admin Panel", color: "text-pink-400" },
+              ].map(({ icon: Icon, label, color }) => (
+                <div key={label} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 dark:bg-white/5 bg-gray-50">
+                  <Icon className={`w-4 h-4 ${color}`} />
+                  <span className="text-xs text-white/70 dark:text-white/70 text-gray-600">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <h3 className="font-semibold text-white/90">Features</h3>
-            <ul className="text-white/60 text-sm space-y-1">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Real-time messaging with polling
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Text formatting: <strong>Bold</strong> (Ctrl+B), <em>Italic</em> (Ctrl+I), <u>Underline</u> (Ctrl+U)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Emoji reactions on messages
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Image sharing (up to 2MB)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Direct messages between users
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                User status (Online, Away, Busy, Offline)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Message locking and editing
-              </li>
-            </ul>
+            <h3 className="font-semibold text-white/90 dark:text-white/90 text-gray-800">Keyboard Shortcuts</h3>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-white/10 dark:bg-white/10 bg-gray-100 rounded text-white/70 dark:text-white/70 text-gray-600">Ctrl+B</kbd>
+                <span className="text-white/60 dark:text-white/60 text-gray-500">Bold</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-white/10 dark:bg-white/10 bg-gray-100 rounded text-white/70 dark:text-white/70 text-gray-600">Ctrl+I</kbd>
+                <span className="text-white/60 dark:text-white/60 text-gray-500">Italic</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-white/10 dark:bg-white/10 bg-gray-100 rounded text-white/70 dark:text-white/70 text-gray-600">Ctrl+U</kbd>
+                <span className="text-white/60 dark:text-white/60 text-gray-500">Underline</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-white/10 dark:bg-white/10 bg-gray-100 rounded text-white/70 dark:text-white/70 text-gray-600">Ctrl+H</kbd>
+                <span className="text-white/60 dark:text-white/60 text-gray-500">Hyperlink</span>
+              </div>
+            </div>
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-semibold text-white/90">Tech Stack</h3>
+            <h3 className="font-semibold text-white/90 dark:text-white/90 text-gray-800">Tech Stack</h3>
             <div className="flex flex-wrap gap-2">
-              {["React", "TypeScript", "Express", "TanStack Query", "Tailwind CSS", "Framer Motion"].map((tech) => (
-                <span key={tech} className="px-2 py-1 bg-white/10 rounded-md text-xs text-white/70">
+              {["React", "TypeScript", "Express", "TanStack Query", "Tailwind CSS", "Framer Motion", "Vite"].map((tech) => (
+                <span key={tech} className="px-2 py-1 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-md text-xs text-white/80 dark:text-white/80 text-gray-600 border border-primary/20">
                   {tech}
                 </span>
               ))}
             </div>
           </div>
           
-          <div className="pt-4 border-t border-white/10 text-center">
-            <p className="text-xs text-white/40">
-              Version 1.0.0 - Made with React + Express
+          <div className="pt-4 border-t border-white/10 dark:border-white/10 border-gray-200 text-center space-y-1">
+            <p className="text-sm font-medium bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+              OCHAT v2.0
+            </p>
+            <p className="text-xs text-white/40 dark:text-white/40 text-gray-400">
+              Simple, Fast, Connected.
             </p>
           </div>
         </div>

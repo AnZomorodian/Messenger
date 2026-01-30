@@ -72,6 +72,8 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
 
   const handleReaction = (emoji: string) => {
     if (!currentUserId) return;
+    // Block self-reactions - users can't react to their own messages
+    if (isCurrentUser) return;
     const userReacted = groupedReactions[emoji]?.includes(currentUserId);
     if (userReacted) {
       onRemoveReact?.(message.id, emoji);

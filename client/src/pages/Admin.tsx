@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Users, MessageSquare, Trash2, Shield, RefreshCw, Lock, Unlock, Ban, Download, Eye, Settings } from "lucide-react";
+import { ArrowLeft, Users, MessageSquare, Trash2, Shield, RefreshCw, Lock, Unlock, Ban, Download, Eye, Settings, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -138,11 +138,13 @@ export default function Admin() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setLocation("/")}
-              className="p-2 hover:bg-white/10 rounded-lg"
+              onClick={() => setLocation("/chat")}
+              className="p-2 hover:bg-white/10 rounded-lg flex items-center gap-2"
               data-testid="button-back"
+              title="Back to Chat"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <Home className="w-5 h-5" />
+              <span className="text-sm hidden sm:inline">Back to Chat</span>
             </button>
             <div>
               <h1 className="text-3xl font-display font-bold flex items-center gap-3">
