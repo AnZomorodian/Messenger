@@ -268,5 +268,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/admin/users", async (req, res) => {
+    const users = await storage.getAllUsers();
+    res.json(users);
+  });
+
+  app.get("/api/admin/messages", async (req, res) => {
+    const messages = await storage.getAllMessages();
+    res.json(messages);
+  });
+
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const success = await storage.deleteUser(id);
+    if (!success) return res.status(404).json({ message: "Not found" });
+    res.status(204).end();
+  });
+
+  app.delete("/api/admin/messages/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const success = await storage.deleteMessage(id);
+    if (!success) return res.status(404).json({ message: "Not found" });
+    res.status(204).end();
+  });
+
+  app.post("/api/admin/messages/clear", async (req, res) => {
+    await storage.clearAllMessages();
+    res.json({ success: true });
+  });
+
   return httpServer;
 }

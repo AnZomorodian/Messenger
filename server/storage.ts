@@ -27,6 +27,11 @@ export interface IStorage {
   
   getDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
   createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  
+  getAllUsers(): Promise<User[]>;
+  getAllMessages(): Promise<(Message & { user?: User })[]>;
+  deleteUser(userId: number): Promise<boolean>;
+  clearAllMessages(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -68,7 +73,12 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, status: "online" };
+    const user: User = { 
+      id, 
+      username: insertUser.username, 
+      color: insertUser.color || "#7c3aed", 
+      status: "online" 
+    };
     this.users.set(id, user);
     this.userActivity.set(id, new Date());
     return user;
@@ -263,6 +273,30 @@ export class MemStorage implements IStorage {
     const dm: DirectMessage = { ...message, id, isEdited: false, timestamp: new Date() };
     this.directMessages.set(id, dm);
     return dm;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getAllMessages(): Promise<(Message & { user?: User })[]> {
+    const msgs = Array.from(this.messages.values());
+    return msgs.map(msg => ({
+      ...msg,
+      user: this.users.get(msg.userId)
+    })).sort((a, b) => (b.timestamp?.getTime() || 0) - (a.timestamp?.getTime() || 0));
+  }
+
+  async deleteUser(userId: number): Promise<boolean> {
+    this.userActivity.delete(userId);
+    return this.users.delete(userId);
+  }
+
+  async clearAllMessages(): Promise<void> {
+    this.messages.clear();
+    this.reactions.clear();
+    this.currentMessageId = 1;
+    this.currentReactionId = 1;
   }
 }
 

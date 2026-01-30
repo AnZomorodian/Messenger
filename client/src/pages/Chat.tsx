@@ -3,7 +3,9 @@ import { useLocation } from "wouter";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield } from "lucide-react";
+import { AboutModal } from "@/components/AboutModal";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -69,6 +71,10 @@ export default function Chat() {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
       e.preventDefault();
       wrapSelectedText('*');
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+      e.preventDefault();
+      wrapSelectedText('__');
     }
   };
 
@@ -374,21 +380,35 @@ export default function Chat() {
         "fixed md:relative z-50 w-72 h-full glass-panel border-r border-white/10 flex flex-col transition-transform duration-300 ease-out md:translate-x-0",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-6 border-b border-white/10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              <span className="text-xs text-muted-foreground font-medium">
-                {users.length} Online
-              </span>
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
+            <div>
+              <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {users.length} Online
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <AboutModal />
+            <Link href="/admin">
+              <button
+                className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+                title="Admin Panel"
+                data-testid="button-admin"
+              >
+                <Shield className="w-5 h-5" />
+              </button>
+            </Link>
           </div>
         </div>
 
