@@ -6,13 +6,14 @@ A real-time chat/messenger application built with React frontend and Express bac
 
 ## Features
 - **Real-time messaging** with 1-second polling
-- **Photo sharing** with 2MB limit and download button
-- **Message reactions** with 8 quick-reaction emojis + 96-emoji picker
+- **Photo sharing** with 2MB limit and download button (auto-deleted after 6 hours)
+- **Message reactions** with 8 quick-reaction emojis + 168-emoji picker
 - **Reply to messages** with inline preview
 - **Edit messages** (if not locked)
-- **Message locking** - users can lock others' messages to prevent editing
+- **Message locking** - users can lock others' messages to prevent editing AND deletion
 - **User status** - online/away/busy/offline with visual indicators
 - **Active user tracking** with heartbeat system (60-second threshold)
+- **Manual refresh button** for active users list
 
 ## User Preferences
 
@@ -45,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/messages` - Fetch all messages with user, reply data, and reactions
 - `POST /api/messages` - Create new message (supports imageUrl)
 - `PATCH /api/messages/:id` - Edit message (blocked if locked)
-- `DELETE /api/messages/:id` - Delete message
+- `DELETE /api/messages/:id` - Delete message (blocked if locked)
 - `POST /api/messages/:id/lock` - Lock message (prevent editing)
 - `POST /api/messages/:id/unlock` - Unlock message
 - `POST /api/reactions` - Add emoji reaction to message
@@ -66,9 +67,8 @@ Located in `shared/schema.ts`:
 ## External Dependencies
 
 ### Database
-- **PostgreSQL**: Primary database, connected via `DATABASE_URL` environment variable
-- **Drizzle ORM**: Schema definition and query building
-- **drizzle-kit**: Database migrations (`npm run db:push`)
+- **In-Memory Storage**: Uses MemStorage class for local data storage (no external database required)
+- **Drizzle ORM**: Schema definition available for potential database migration
 
 ### Frontend Libraries
 - **@tanstack/react-query**: Server state management and caching
