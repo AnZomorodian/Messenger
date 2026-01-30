@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Users, MessageSquare, Trash2, Shield, RefreshCw, Lock, Unlock } from "lucide-react";
+import { ArrowLeft, Users, MessageSquare, Trash2, Shield, RefreshCw, Lock, Unlock, Ban, Download, Eye, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const ADMIN_PASSWORD = "admin123";
 
@@ -18,6 +19,9 @@ export default function Admin() {
   const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
+  const [bannedUsers, setBannedUsers] = useState<number[]>([]);
+  const [selectedDMPair, setSelectedDMPair] = useState<{user1: User, user2: User} | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
 
   const { data: allUsers = [], isLoading: isLoadingUsers, refetch: refetchUsers } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -215,7 +219,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="bg-zinc-800/50 border border-zinc-700 mb-4">
+          <TabsList className="bg-zinc-800/50 dark:bg-zinc-800/50 bg-white/80 border border-zinc-700 dark:border-zinc-700 border-gray-200 mb-4">
             <TabsTrigger value="users" className="data-[state=active]:bg-primary">
               <Users className="w-4 h-4 mr-2" />
               Users
@@ -223,6 +227,10 @@ export default function Admin() {
             <TabsTrigger value="messages" className="data-[state=active]:bg-primary">
               <MessageSquare className="w-4 h-4 mr-2" />
               Messages
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-primary">
+              <Settings className="w-4 h-4 mr-2" />
+              Tools
             </TabsTrigger>
           </TabsList>
 
@@ -353,6 +361,179 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Card className="bg-zinc-900/50 dark:bg-zinc-900/50 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Ban className="w-5 h-5 text-red-400" />
+                    Banned Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-white/60 dark:text-white/60 text-gray-600 mb-4">
+                    Ban users to prevent them from sending messages
+                  </p>
+                  {bannedUsers.length === 0 ? (
+                    <p className="text-sm text-white/40 dark:text-white/40 text-gray-400">No banned users</p>
+                  ) : (
+                    <div className="space-y-2 mb-4">
+                      {bannedUsers.map(userId => {
+                        const user = allUsers.find(u => u.id === userId);
+                        return (
+                          <div key={userId} className="flex items-center justify-between p-2 bg-red-500/10 rounded">
+                            <span className="text-sm">{user?.username || `User #${userId}`}</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setBannedUsers(prev => prev.filter(id => id !== userId))}
+                              data-testid={`button-unban-${userId}`}
+                            >
+                              Unban
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {allUsers.filter(u => !bannedUsers.includes(u.id)).slice(0, 5).map(user => (
+                      <Button
+                        key={user.id}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setBannedUsers(prev => [...prev, user.id]);
+                          toast({ title: `${user.username} banned` });
+                        }}
+                        data-testid={`button-ban-${user.id}`}
+                      >
+                        Ban {user.username}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 dark:bg-zinc-900/50 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Eye className="w-5 h-5 text-blue-400" />
+                    View DM Conversations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-white/60 dark:text-white/60 text-gray-600 mb-4">
+                    Monitor private conversations between users
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allUsers.slice(0, 6).map((user1, i) => 
+                      allUsers.slice(i + 1, i + 4).map(user2 => (
+                        <div 
+                          key={`${user1.id}-${user2.id}`}
+                          className="flex items-center justify-between p-2 bg-zinc-800/50 dark:bg-zinc-800/50 bg-gray-100 rounded"
+                        >
+                          <span className="text-xs truncate">
+                            <span style={{ color: user1.color }}>{user1.username}</span>
+                            {" & "}
+                            <span style={{ color: user2.color }}>{user2.username}</span>
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2"
+                            onClick={() => {
+                              setSelectedDMPair({ user1, user2 });
+                              toast({ title: `Viewing DMs: ${user1.username} & ${user2.username}` });
+                            }}
+                            data-testid={`button-view-dm-${user1.id}-${user2.id}`}
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 dark:bg-zinc-900/50 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Download className="w-5 h-5 text-green-400" />
+                    Export Data
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-white/60 dark:text-white/60 text-gray-600 mb-4">
+                    Download all data as JSON for backup
+                  </p>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => {
+                        const data = {
+                          users: allUsers,
+                          messages: allMessages,
+                          exportedAt: new Date().toISOString()
+                        };
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ochat-export-${Date.now()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast({ title: "Data exported successfully" });
+                      }}
+                      data-testid="button-export-all"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Export All Data
+                    </Button>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => {
+                        const data = { users: allUsers, exportedAt: new Date().toISOString() };
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ochat-users-${Date.now()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast({ title: "Users exported" });
+                      }}
+                      data-testid="button-export-users"
+                    >
+                      Export Users Only
+                    </Button>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => {
+                        const data = { messages: allMessages, exportedAt: new Date().toISOString() };
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ochat-messages-${Date.now()}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast({ title: "Messages exported" });
+                      }}
+                      data-testid="button-export-messages"
+                    >
+                      Export Messages Only
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </motion.div>

@@ -11,7 +11,7 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👏
 function formatText(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(__(.+?)__)/g;
+  const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(__(.+?)__)|(\[([^\]]+)\]\(([^)]+)\))/g;
   let match;
   let keyIndex = 0;
   
@@ -26,6 +26,18 @@ function formatText(text: string): React.ReactNode[] {
       parts.push(<em key={keyIndex++}>{match[4]}</em>);
     } else if (match[5]) {
       parts.push(<u key={keyIndex++}>{match[6]}</u>);
+    } else if (match[7]) {
+      parts.push(
+        <a 
+          key={keyIndex++} 
+          href={match[9]} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline"
+        >
+          {match[8]}
+        </a>
+      );
     }
     
     lastIndex = match.index + match[0].length;

@@ -4,8 +4,8 @@ import { queryClient } from "@/lib/queryClient";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck } from "lucide-react";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile, useUpdateDM, useDeleteDM, useLockDM, useUnlockDM } from "@/hooks/use-chat";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2 } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -173,6 +173,11 @@ export default function Chat() {
   const createPoll = useCreatePoll();
   const votePoll = useVotePoll();
   const uploadFile = useUploadFile();
+  const updateDM = useUpdateDM();
+  const deleteDM = useDeleteDM();
+  const lockDM = useLockDM();
+  const unlockDM = useUnlockDM();
+  const [editingDM, setEditingDM] = useState<{id: number; content: string} | null>(null);
   useHeartbeat(user?.id);
 
   // Handle tab close / logout - free username
@@ -1036,7 +1041,7 @@ export default function Chat() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {directMessages.length === 0 ? (
-                  <p className="text-center text-white/40 text-sm py-8">No messages yet. Say hello!</p>
+                  <p className="text-center text-white/40 dark:text-white/40 text-sm py-8">No messages yet. Say hello!</p>
                 ) : (
                   directMessages.map((dm: any) => (
                     <div
@@ -1048,21 +1053,28 @@ export default function Chat() {
                     >
                       <div
                         className={cn(
-                          "p-3 rounded-2xl text-sm",
+                          "p-3 rounded-2xl text-sm relative",
                           dm.fromUserId === user.id
                             ? "bg-primary text-white"
-                            : "bg-white/10",
-                          dm.isPinned && "ring-1 ring-yellow-500/50"
+                            : "bg-white/10 dark:bg-white/10 bg-gray-200",
+                          dm.isPinned && "ring-1 ring-yellow-500/50",
+                          dm.isLocked && "ring-2 ring-yellow-500/50"
                         )}
                       >
+                        {dm.isLocked && (
+                          <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1" title="Locked">
+                            <Lock className="w-2.5 h-2.5 text-black" />
+                          </div>
+                        )}
                         {dm.isPinned && (
                           <Pin className="w-3 h-3 text-yellow-400 inline mr-1" />
                         )}
+                        {dm.isEdited && <span className="text-xs opacity-50">(edited) </span>}
                         {dm.content}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {dm.fromUserId === user.id && (
-                          <span className="text-xs text-white/30 flex items-center gap-1">
+                          <span className="text-xs text-white/30 dark:text-white/30 text-gray-500 flex items-center gap-1">
                             {dm.isRead ? (
                               <>
                                 <CheckCheck className="w-3 h-3 text-blue-400" />
@@ -1075,33 +1087,110 @@ export default function Chat() {
                         )}
                         <button
                           onClick={() => handlePinDM(dm.id, dm.isPinned)}
-                          className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 hover:text-yellow-400"
+                          className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 dark:text-white/40 text-gray-500 hover:text-yellow-400"
                           title={dm.isPinned ? "Unpin" : "Pin"}
+                          data-testid={`button-pin-dm-${dm.id}`}
                         >
                           {dm.isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
                         </button>
+                        {dm.fromUserId === user.id && !dm.isLocked && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingDM({ id: dm.id, content: dm.content });
+                                setDmContent(dm.content);
+                              }}
+                              className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 dark:text-white/40 text-gray-500 hover:text-white dark:hover:text-white hover:text-gray-700"
+                              title="Edit"
+                              data-testid={`button-edit-dm-${dm.id}`}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm("Delete this message?")) {
+                                  deleteDM.mutate(dm.id);
+                                }
+                              }}
+                              className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 dark:text-white/40 text-gray-500 hover:text-red-400"
+                              title="Delete"
+                              data-testid={`button-delete-dm-${dm.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                        {dm.fromUserId !== user.id && !dm.isLocked && (
+                          <button
+                            onClick={() => lockDM.mutate({ id: dm.id, userId: user.id })}
+                            className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 dark:text-white/40 text-gray-500 hover:text-yellow-400"
+                            title="Lock (prevent editing/deletion)"
+                            data-testid={`button-lock-dm-${dm.id}`}
+                          >
+                            <Lock className="w-3 h-3" />
+                          </button>
+                        )}
+                        {dm.isLocked && dm.lockedByUserId === user.id && (
+                          <button
+                            onClick={() => unlockDM.mutate(dm.id)}
+                            className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-yellow-400 hover:text-white dark:hover:text-white hover:text-gray-700"
+                            title="Unlock"
+                            data-testid={`button-unlock-dm-${dm.id}`}
+                          >
+                            <Unlock className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
                 )}
               </div>
 
-              <form onSubmit={handleSendDM} className="p-4 border-t border-white/10 flex gap-3">
+              {editingDM && (
+                <div className="px-4 py-2 bg-white/5 dark:bg-white/5 bg-gray-100 border-t border-white/10 dark:border-white/10 border-gray-200 flex items-center gap-2">
+                  <Edit2 className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-white/60 dark:text-white/60 text-gray-600">Editing message</span>
+                  <button
+                    onClick={() => {
+                      setEditingDM(null);
+                      setDmContent("");
+                    }}
+                    className="ml-auto p-1 hover:bg-white/10 dark:hover:bg-white/10 hover:bg-gray-200 rounded"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (!dmContent.trim()) return;
+                if (editingDM) {
+                  updateDM.mutate({ id: editingDM.id, content: dmContent.trim() }, {
+                    onSuccess: () => {
+                      setEditingDM(null);
+                      setDmContent("");
+                    }
+                  });
+                } else {
+                  handleSendDM(e);
+                }
+              }} className="p-4 border-t border-white/10 dark:border-white/10 border-gray-200 flex gap-3">
                 <input
                   type="text"
                   value={dmContent}
                   onChange={(e) => setDmContent(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 outline-none focus:border-primary/50"
+                  placeholder={editingDM ? "Edit message..." : "Type a message..."}
+                  className="flex-1 bg-white/5 dark:bg-white/5 bg-gray-100 border border-white/10 dark:border-white/10 border-gray-200 rounded-xl px-4 py-2 outline-none focus:border-primary/50 text-foreground"
                   data-testid="input-dm-message"
                 />
                 <button
                   type="submit"
-                  disabled={!dmContent.trim()}
+                  disabled={!dmContent.trim() || updateDM.isPending}
                   className="p-3 rounded-xl bg-primary text-white disabled:opacity-50"
                   data-testid="button-send-dm"
                 >
-                  <Send className="w-4 h-4" />
+                  {updateDM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
               </form>
             </motion.div>

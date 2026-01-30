@@ -5,7 +5,8 @@
 A real-time chat/messenger application built with React frontend and Express backend. Users can join with a username and custom color, send messages, reply to messages, edit their own messages, and see other active users. The application uses polling for real-time updates and stores data in-memory (MemStorage).
 
 ## Architectural Guidelines
-- **Strictly Local Database**: This project MUST only use in-memory storage or local file-based storage. NEVER use external databases like PostgreSQL or others unless explicitly requested.
+- **Strictly Local Database**: This project MUST only use in-memory storage or local file-based storage. NEVER use external databases like PostgreSQL, Replit Database, or any external services unless explicitly requested by the user.
+- **No External Dependencies**: Keep all data local - no Replit DB, no external APIs for core functionality.
 - **Witness Mode**: Direct chats support adding a third user (Witness) with the consent of all parties.
 
 ## Features

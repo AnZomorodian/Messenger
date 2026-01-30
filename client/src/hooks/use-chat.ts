@@ -517,3 +517,64 @@ export function useLogout() {
     },
   });
 }
+
+export function useUpdateDM() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, content }: { id: number; content: string }) => {
+      return fetcher(`/api/dm/messages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+    },
+  });
+}
+
+export function useDeleteDM() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/dm/messages/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to delete");
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+    },
+  });
+}
+
+export function useLockDM() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) => {
+      return fetcher(`/api/dm/messages/${id}/lock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+    },
+  });
+}
+
+export function useUnlockDM() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      return fetcher(`/api/dm/messages/${id}/unlock`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+    },
+  });
+}
