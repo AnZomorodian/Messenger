@@ -13,8 +13,9 @@ A real-time chat/messenger application built with React frontend and Express bac
 - **Real-time messaging** with 1-second polling
 - **Photo sharing** with 2MB limit and download button (auto-deleted after 6 hours)
 - **File sharing** with 5MB limit and 3-hour auto-deletion
-- **Poll creation** with visual voting results in public messages
-- **Message reactions** with 8 quick-reaction emojis + 168-emoji picker
+- **Poll creation** with visual voting results, percentage bars, and winning option highlighting
+- **Timer feature** with visual countdown display, quick presets (1/5/10/15/30 min), and completion notifications
+- **Message reactions** with 8 quick-reaction emojis + 168-emoji picker (users cannot react to own messages)
 - **Reply to messages** with inline preview
 - **Edit messages** (if not locked)
 - **Message locking** - users can lock others' messages to prevent editing AND deletion
