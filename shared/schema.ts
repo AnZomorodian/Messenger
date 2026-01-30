@@ -8,8 +8,10 @@ export type UserStatus = typeof userStatuses[number];
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  color: text("color").notNull().default("#000000"),
+  color: text("color").notNull().default("#7c3aed"),
   status: text("status").notNull().default("online"),
+  bio: text("bio"),
+  avatar: text("avatar"),
 });
 
 export const messages = pgTable("messages", {
@@ -137,7 +139,18 @@ export type InsertFile = z.infer<typeof insertFileSchema>;
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   color: true,
+  bio: true,
+  avatar: true,
 });
+
+export const updateUserSchema = createInsertSchema(users).pick({
+  username: true,
+  color: true,
+  bio: true,
+  avatar: true,
+}).partial();
+
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 
 export const insertMessageSchema = createInsertSchema(messages).pick({
   content: true,

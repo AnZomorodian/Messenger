@@ -1,9 +1,10 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus, type DMRequest, type InsertDMRequest, type DirectMessage, type InsertDirectMessage, type DMRequestStatus, type Poll, type InsertPoll, type FileRecord, type InsertFile } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus, type DMRequest, type InsertDMRequest, type DirectMessage, type InsertDirectMessage, type DMRequestStatus, type Poll, type InsertPoll, type FileRecord, type InsertFile, type UpdateUser } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, data: UpdateUser): Promise<User | undefined>;
   getActiveUsers(): Promise<(User & { lastSeen?: Date })[]>;
   updateUserActivity(userId: number): Promise<void>;
   updateUserStatus(userId: number, status: UserStatus): Promise<User | undefined>;
@@ -113,11 +114,21 @@ export class MemStorage implements IStorage {
       id, 
       username: insertUser.username, 
       color: insertUser.color || "#7c3aed", 
-      status: "online" 
+      status: "online",
+      bio: insertUser.bio || null,
+      avatar: insertUser.avatar || null
     };
     this.users.set(id, user);
     this.userActivity.set(id, new Date());
     return user;
+  }
+
+  async updateUser(id: number, data: UpdateUser): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    const updated = { ...user, ...data };
+    this.users.set(id, updated);
+    return updated;
   }
 
   async getActiveUsers(): Promise<(User & { lastSeen?: Date })[]> {

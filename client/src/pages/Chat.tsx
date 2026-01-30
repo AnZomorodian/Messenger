@@ -5,8 +5,9 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile, useUpdateDM, useDeleteDM, useLockDM, useUnlockDM } from "@/hooks/use-chat";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2, Timer, Bell, Play, Pause } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2, Timer, Bell, Play, Pause, Settings, UserCircle, Palette } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message, UserStatus } from "@shared/schema";
@@ -77,6 +78,34 @@ export default function Chat() {
   const [activeTimer, setActiveTimer] = useState<{ endTime: number; label: string } | null>(null);
   const [timerRemaining, setTimerRemaining] = useState<number>(0);
   const [lastCheckedMentions, setLastCheckedMentions] = useState<number[]>([]);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [editColor, setEditColor] = useState("");
+
+  // Initialize edit fields when user is loaded
+  useEffect(() => {
+    if (user) {
+      setEditName(user.username);
+      setEditBio(user.bio || "");
+      setEditColor(user.color || "#7c3aed");
+    }
+  }, [user]);
+
+  const handleUpdateProfile = () => {
+    if (!user) return;
+    fetch(`/api/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: editName, bio: editBio, color: editColor })
+    }).then(res => res.json()).then(updated => {
+      setUser(updated);
+      localStorage.setItem("chat_user", JSON.stringify(updated));
+      setShowSettingsModal(false);
+      toast({ title: "Profile Updated" });
+      refetchUsers();
+    });
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -609,6 +638,64 @@ export default function Chat() {
         />
       )}
 
+      {/* Settings Modal */}
+      <Dialog open={showSettingsModal} onOpenChange={setShowSettingsModal}>
+        <DialogContent className="bg-zinc-900 dark:bg-zinc-900 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5 text-primary" />
+              Profile Settings
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/60">Display Name</label>
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/60">Bio</label>
+              <textarea
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-sm h-20 focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/60 flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Profile Color
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {["#7c3aed", "#ef4444", "#10b981", "#3b82f6", "#f59e0b", "#ec4899"].map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setEditColor(c)}
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110",
+                      editColor === c ? "border-white" : "border-transparent"
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={editColor}
+                  onChange={(e) => setEditColor(e.target.value)}
+                  className="w-8 h-8 rounded-full bg-transparent border-0 p-0 overflow-hidden cursor-pointer"
+                />
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleUpdateProfile}>
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Sidebar - Users List */}
       <aside className={cn(
         "fixed md:relative z-50 w-72 h-full glass-panel border-r border-white/10 flex flex-col transition-transform duration-300 ease-out md:translate-x-0",
@@ -622,7 +709,17 @@ export default function Chat() {
             <div>
               <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
               <div className="flex items-center gap-2">
-                <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSettingsModal(true)}
+                className="w-8 h-8 rounded-full"
+                data-testid="button-settings"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+              <ThemeToggle />
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>

@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { insertUserSchema, insertMessageSchema, insertReactionSchema, insertDMRequestSchema, insertDirectMessageSchema, insertPollSchema } from "@shared/schema";
+import { insertUserSchema, insertMessageSchema, insertReactionSchema, insertDMRequestSchema, insertDirectMessageSchema, insertPollSchema, updateUserSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 
@@ -249,6 +249,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.sendFile(filePath);
     } else {
       res.status(404).json({ message: "Not found" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = updateUserSchema.parse(req.body);
+      const user = await storage.updateUser(id, data);
+      if (!user) return res.status(404).json({ message: "Not found" });
+      res.json(user);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid input" });
     }
   });
 

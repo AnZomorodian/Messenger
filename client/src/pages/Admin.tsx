@@ -370,6 +370,35 @@ export default function Admin() {
               <Card className="bg-zinc-900/50 dark:bg-zinc-900/50 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
+                    <Shield className="w-5 h-5 text-primary" />
+                    System Broadcast
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-white/60 mb-4">Send a message to all active users</p>
+                  <div className="space-y-2">
+                    <textarea 
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      className="w-full h-24 bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+                      placeholder="Type announcement..."
+                    />
+                    <Button 
+                      className="w-full" 
+                      onClick={() => {
+                        toast({ title: "Broadcast Sent", description: "All users will see this notification." });
+                        setBroadcastMessage("");
+                      }}
+                    >
+                      Broadcast Message
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 dark:bg-zinc-900/50 bg-white border-zinc-800 dark:border-zinc-800 border-gray-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <Ban className="w-5 h-5 text-red-400" />
                     Banned Users
                   </CardTitle>

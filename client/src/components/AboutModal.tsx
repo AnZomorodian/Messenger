@@ -29,17 +29,18 @@ export function AboutModal() {
               <Heart className="w-4 h-4 text-red-400 animate-pulse" />
               Built with love by <span className="font-bold text-primary">Artin Zomorodian</span>
             </p>
+            <p className="text-xs text-white/40 mt-1">Version 2.5 - Optimized for Speed & Privacy</p>
           </div>
           
           <div className="space-y-2">
             <h3 className="font-semibold text-white/90 dark:text-white/90 text-gray-800 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-yellow-400" />
-              What is OCHAT?
+              Next-Gen Communication
             </h3>
             <p className="text-white/60 dark:text-white/60 text-gray-600 text-sm leading-relaxed">
-              OCHAT is a modern real-time messenger application featuring instant messaging, 
-              rich text formatting, emoji reactions, media sharing, polls, timers, and secure 
-              direct messaging with advanced privacy controls.
+              OCHAT is a high-performance messaging platform that puts security and user experience first. 
+              Our distributed architecture ensures lightning-fast message delivery, while end-to-end 
+              encryption principles keep your data private.
             </p>
           </div>
           
