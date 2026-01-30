@@ -99,12 +99,32 @@ export default function Chat() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: editName, bio: editBio, color: editColor })
-    }).then(res => res.json()).then(updated => {
-      setUser(updated);
-      localStorage.setItem("chat_user", JSON.stringify(updated));
-      setShowSettingsModal(false);
-      toast({ title: "Profile Updated" });
-      refetchUsers();
+    })
+    .then(async res => {
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await res.json() : null;
+      
+      if (!res.ok) {
+        throw new Error(data?.message || `Error ${res.status}: ${res.statusText}`);
+      }
+      return data;
+    })
+    .then(updated => {
+      if (updated) {
+        setUser(updated);
+        localStorage.setItem("chat_user", JSON.stringify(updated));
+        setShowSettingsModal(false);
+        toast({ title: "Profile Updated" });
+        refetchUsers();
+      }
+    })
+    .catch(err => {
+      console.error("Profile update error:", err);
+      toast({ 
+        variant: "destructive",
+        title: "Update Failed", 
+        description: err.message || "An unexpected error occurred"
+      });
     });
   };
 
@@ -650,23 +670,23 @@ export default function Chat() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/60">Display Name</label>
+              <label className="text-sm font-medium opacity-60">Display Name</label>
               <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+                className="w-full bg-muted border border-border rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/60">Bio</label>
+              <label className="text-sm font-medium opacity-60">Bio</label>
               <textarea
                 value={editBio}
                 onChange={(e) => setEditBio(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-2 text-sm h-20 focus:ring-2 focus:ring-primary outline-none"
+                className="w-full bg-muted border border-border rounded-lg p-2 text-sm h-20 focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/60 flex items-center gap-2">
+              <label className="text-sm font-medium opacity-60 flex items-center gap-2">
                 <Palette className="w-4 h-4" />
                 Profile Color
               </label>
@@ -708,26 +728,33 @@ export default function Chat() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="font-display font-bold text-xl tracking-tight">OCHAT</h2>
-              <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowSettingsModal(true)}
-                className="w-8 h-8 rounded-full"
-                data-testid="button-settings"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-              <ThemeToggle />
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {users.length} Online
-                </span>
+              <h1 className="font-display font-bold text-xl tracking-tight">OCHAT</h1>
+              <div className="flex items-center gap-3 mt-1.5">
+                <div className="flex items-center gap-1">
+                  <ThemeToggle />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowSettingsModal(true)}
+                    className="w-8 h-8 rounded-full hover-elevate"
+                    data-testid="button-settings"
+                    title="Settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="h-4 w-[1px] bg-border/40" />
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/40 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                    System Live
+                  </span>
+                </div>
               </div>
             </div>
           </div>
