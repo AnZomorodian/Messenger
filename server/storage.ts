@@ -8,6 +8,7 @@ export interface IStorage {
   updateUserActivity(userId: number): Promise<void>;
   updateUserStatus(userId: number, status: UserStatus): Promise<User | undefined>;
   
+  getMessage(id: number): Promise<Message | undefined>;
   getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User })[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, content: string): Promise<Message | undefined>;
@@ -84,6 +85,10 @@ export class MemStorage implements IStorage {
     const updated = { ...user, status };
     this.users.set(userId, updated);
     return updated;
+  }
+
+  async getMessage(id: number): Promise<Message | undefined> {
+    return this.messages.get(id);
   }
 
   async getMessages(): Promise<(Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User })[]> {

@@ -162,7 +162,7 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
                 <Unlock className="w-3.5 h-3.5" />
               </button>
             )}
-            {isCurrentUser && (
+            {isCurrentUser && !message.isLocked && (
               <button 
                 onClick={() => onDelete?.(message.id)}
                 className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-red-400"

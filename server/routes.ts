@@ -70,6 +70,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete(api.messages.delete.path, async (req, res) => {
     const id = parseInt(req.params.id);
+    const message = await storage.getMessage(id);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    if (message.isLocked) {
+      return res.status(403).json({ message: "Cannot delete a locked message" });
+    }
     const success = await storage.deleteMessage(id);
     if (!success) return res.status(404).json({ message: "Not found" });
     res.status(204).end();
@@ -100,6 +105,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
+
+  // Auto-cleanup images older than 6 hours
+  const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+  
+  const cleanupOldImages = () => {
+    try {
+      const files = fs.readdirSync(uploadsDir);
+      const now = Date.now();
+      
+      files.forEach(file => {
+        const filepath = path.join(uploadsDir, file);
+        const stats = fs.statSync(filepath);
+        const age = now - stats.mtimeMs;
+        
+        if (age > SIX_HOURS_MS) {
+          fs.unlinkSync(filepath);
+          console.log(`Cleaned up old image: ${file}`);
+        }
+      });
+    } catch (e) {
+      console.error("Image cleanup error:", e);
+    }
+  };
+  
+  // Run cleanup every hour
+  setInterval(cleanupOldImages, 60 * 60 * 1000);
+  // Also run immediately on startup
+  cleanupOldImages();
 
   app.post("/api/upload", async (req, res) => {
     try {

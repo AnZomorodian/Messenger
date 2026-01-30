@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -21,18 +21,28 @@ const EMOJIS = [
   // Smileys
   "😀", "😁", "😂", "🤣", "😊", "😇", "🥰", "😍", "🤩", "😘", "😋", "🤪",
   "😎", "🤓", "🧐", "🤔", "🤭", "🤫", "😏", "😌", "😴", "🤤", "😜", "😝",
+  "🙃", "😉", "🥳", "🤑", "🤗", "🤡", "🥸", "😺", "😸", "😹", "😻", "😼",
   // Emotions
   "🥺", "😢", "😭", "😤", "😠", "🤯", "😱", "🥶", "🥵", "😈", "👻", "💀",
+  "😵", "🤮", "🤢", "🤧", "😷", "🤒", "🤕", "😬", "🫣", "🫡", "🫠", "🙄",
   // Hand gestures
   "👍", "👎", "👋", "🤝", "👏", "🙌", "🤲", "💪", "✌️", "🤞", "🤟", "🤙",
+  "🫶", "🤌", "🫰", "🖐️", "✋", "👊", "🤛", "🤜", "🫵", "☝️", "👆", "👇",
   // Hearts & Love
   "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "💕", "💗", "💓", "💘",
+  "💝", "💖", "❤️‍🔥", "💔", "🩷", "🩵", "🩶", "💋", "😽", "🫀", "💞", "💌",
   // Activities
   "🔥", "✨", "⭐", "🌟", "💫", "🎉", "🎊", "🎁", "🎈", "🎯", "🏆", "🥇",
+  "🎪", "🎭", "🎨", "🎲", "🎳", "🎸", "🎹", "🎺", "🎻", "🪘", "🥁", "🎤",
   // Objects
   "🚀", "💎", "💰", "🎮", "🎧", "📱", "💻", "🎬", "🎵", "🎶", "☕", "🍕",
+  "🍔", "🍟", "🌭", "🍿", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🧋", "🥤",
   // Nature
-  "🌈", "🌸", "🌺", "🌻", "🌙", "⚡", "❄️", "🍀", "🌴", "🦋", "🐱", "🐶"
+  "🌈", "🌸", "🌺", "🌻", "🌙", "⚡", "❄️", "🍀", "🌴", "🦋", "🐱", "🐶",
+  "🦊", "🐼", "🐨", "🦁", "🐯", "🐸", "🐵", "🐔", "🦄", "🐲", "🦖", "🦕",
+  // More fun
+  "💯", "🆒", "🆕", "🆓", "🔝", "🔜", "💤", "💢", "💥", "💦", "💨", "🕳️",
+  "🌀", "🎀", "🎗️", "🏅", "🥈", "🥉", "⚽", "🏀", "🏈", "⚾", "🎾", "🏐"
 ];
 
 export default function Chat() {
@@ -63,7 +73,7 @@ export default function Chat() {
   }, [setLocation]);
 
   // Hooks
-  const { data: users = [] } = useUsers();
+  const { data: users = [], refetch: refetchUsers, isRefetching: isRefetchingUsers } = useUsers();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessages();
   const sendMessage = useSendMessage();
   const updateMessage = useUpdateMessage();
@@ -99,6 +109,13 @@ export default function Chat() {
         toast({
           title: "Deleted",
           description: "Message has been deleted.",
+        });
+      },
+      onError: (error) => {
+        toast({
+          variant: "destructive",
+          title: "Cannot delete",
+          description: error.message || "This message cannot be deleted.",
         });
       },
     });
@@ -299,7 +316,18 @@ export default function Chat() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 px-2">Active Users</h3>
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Users</h3>
+            <button
+              onClick={() => refetchUsers()}
+              disabled={isRefetchingUsers}
+              className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors disabled:opacity-50"
+              title="Refresh user list"
+              data-testid="button-refresh-users"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isRefetchingUsers && "animate-spin")} />
+            </button>
+          </div>
           {users.map((u) => {
             const statusInfo = STATUS_CONFIG[(u.status as UserStatus) || "online"];
             return (

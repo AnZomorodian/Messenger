@@ -254,7 +254,10 @@ export function useDeleteMessage() {
       const res = await fetch(`/api/messages/${messageId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete message");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete message");
+      }
       return true;
     },
     onSuccess: () => {
