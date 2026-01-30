@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { Message, User, Reaction } from "@shared/schema";
 import { Edit2, Reply, CornerDownRight, SmilePlus, Download, Lock, Unlock, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PollDisplay } from "./PollDisplay";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👏", "🎉"];
 
@@ -235,7 +236,11 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
                 </button>
               </div>
             )}
-            {message.content && <p>{formatText(message.content)}</p>}
+            {message.content && !message.content.startsWith('[POLL]') && <p>{formatText(message.content)}</p>}
+            
+            {message.content?.startsWith('[POLL]') && currentUserId && (
+              <PollDisplay messageId={message.id} currentUserId={currentUserId} />
+            )}
             
             <div className={cn(
               "text-[10px] opacity-50 mt-1 w-full flex justify-between items-center gap-2",

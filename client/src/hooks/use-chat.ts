@@ -353,3 +353,167 @@ export function useSendDirectMessage() {
     },
   });
 }
+
+export function usePinDMMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: number) => {
+      return fetcher(`/api/dm/messages/${messageId}/pin`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/pinned"] });
+    },
+  });
+}
+
+export function useUnpinDMMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: number) => {
+      return fetcher(`/api/dm/messages/${messageId}/unpin`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/pinned"] });
+    },
+  });
+}
+
+export function usePinnedDMMessages(userId1: number | undefined, userId2: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/dm/pinned", userId1, userId2],
+    queryFn: async () => {
+      if (!userId1 || !userId2) return [];
+      return fetcher(`/api/dm/pinned/${userId1}/${userId2}`);
+    },
+    enabled: !!userId1 && !!userId2,
+    refetchInterval: 5000,
+  });
+}
+
+export function useMarkDMAsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fromUserId, toUserId }: { fromUserId: number; toUserId: number }) => {
+      return fetcher("/api/dm/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromUserId, toUserId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+    },
+  });
+}
+
+export function useUnreadCount(userId: number | undefined, fromUserId: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/dm/unread", userId, fromUserId],
+    queryFn: async () => {
+      if (!userId || !fromUserId) return { count: 0 };
+      return fetcher(`/api/dm/unread/${userId}/${fromUserId}`);
+    },
+    enabled: !!userId && !!fromUserId,
+    refetchInterval: 3000,
+  });
+}
+
+// === POLLS ===
+
+export function useCreatePoll() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ messageId, question, options }: { messageId: number; question: string; options: string[] }) => {
+      return fetcher("/api/polls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, question, options }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.messages.list.path] });
+    },
+  });
+}
+
+export function usePoll(messageId: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/polls", messageId],
+    queryFn: async () => {
+      if (!messageId) return null;
+      try {
+        return await fetcher(`/api/polls/${messageId}`);
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!messageId,
+    refetchInterval: 2000,
+  });
+}
+
+export function useVotePoll() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pollId, optionIndex, userId }: { pollId: number; optionIndex: number; userId: number }) => {
+      return fetcher(`/api/polls/${pollId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optionIndex, userId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/polls"] });
+    },
+  });
+}
+
+// === FILE UPLOAD ===
+
+export function useUploadFile() {
+  return useMutation({
+    mutationFn: async (file: File): Promise<{ url: string; expiresAt: string }> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const res = await fetch("/api/upload/file", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "text/plain",
+                "X-Original-Name": file.name
+              },
+              body: reader.result as string,
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              throw new Error(err.message || "Upload failed");
+            }
+            const data = await res.json();
+            resolve(data);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+    },
+  });
+}
+
+// === LOGOUT ===
+
+export function useLogout() {
+  return useMutation({
+    mutationFn: async (userId: number) => {
+      return fetcher("/api/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    },
+  });
+}

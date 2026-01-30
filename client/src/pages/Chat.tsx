@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,6 +62,12 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dmChatUser, setDmChatUser] = useState<User | null>(null);
   const [dmContent, setDmContent] = useState("");
+  const [showPollModal, setShowPollModal] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const generalFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -136,7 +142,36 @@ export default function Chat() {
   const { data: dmPartners = [] } = useDMPartners(user?.id);
   const { data: directMessages = [] } = useDirectMessages(user?.id, dmChatUser?.id);
   const sendDirectMessage = useSendDirectMessage();
+  const logoutMutation = useLogout();
+  const pinDMMessage = usePinDMMessage();
+  const unpinDMMessage = useUnpinDMMessage();
+  const markDMAsRead = useMarkDMAsRead();
+  const { data: pinnedDMMessages = [] } = usePinnedDMMessages(user?.id, dmChatUser?.id);
+  const createPoll = useCreatePoll();
+  const votePoll = useVotePoll();
+  const uploadFile = useUploadFile();
   useHeartbeat(user?.id);
+
+  // Handle tab close / logout - free username
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (user?.id) {
+        navigator.sendBeacon('/api/logout', JSON.stringify({ userId: user.id }));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user?.id]);
+
+  // Mark DMs as read when viewing
+  useEffect(() => {
+    if (user?.id && dmChatUser?.id) {
+      markDMAsRead.mutate({ fromUserId: dmChatUser.id, toUserId: user.id });
+    }
+  }, [dmChatUser?.id, user?.id, directMessages.length]);
 
   const pendingRequests = dmRequests.filter((r: any) => r.status === "pending" && r.toUserId === user?.id);
 
@@ -342,8 +377,78 @@ export default function Chat() {
   };
 
   const handleLogout = () => {
+    if (user?.id) {
+      logoutMutation.mutate(user.id);
+    }
     localStorage.removeItem("chat_user");
     setLocation("/");
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please select a file under 5MB.",
+      });
+      return;
+    }
+    
+    setSelectedFile(file);
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => setFilePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (generalFileInputRef.current) generalFileInputRef.current.value = "";
+  };
+
+  const handleCreatePoll = async () => {
+    if (!pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2) {
+      toast({
+        variant: "destructive",
+        title: "Invalid poll",
+        description: "Please add a question and at least 2 options.",
+      });
+      return;
+    }
+    if (!user) return;
+
+    const messageResult = await sendMessage.mutateAsync({
+      content: `[POLL] ${pollQuestion}`,
+      userId: user.id,
+      replyToId: null,
+      imageUrl: null,
+    });
+
+    await createPoll.mutateAsync({
+      messageId: messageResult.id,
+      question: pollQuestion,
+      options: pollOptions.filter(o => o.trim()),
+    });
+
+    setPollQuestion("");
+    setPollOptions(["", ""]);
+    setShowPollModal(false);
+    toast({ title: "Poll created!" });
+  };
+
+  const handlePinDM = (messageId: number, isPinned: boolean) => {
+    if (isPinned) {
+      unpinDMMessage.mutate(messageId);
+    } else {
+      pinDMMessage.mutate(messageId);
+    }
   };
 
   const handleEdit = (msg: Message & { user?: User }) => {
@@ -665,6 +770,12 @@ export default function Chat() {
               accept="image/*"
               className="hidden"
             />
+            <input
+              type="file"
+              ref={generalFileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             
             {imagePreview && (
               <div className="relative mb-3 inline-block">
@@ -673,6 +784,21 @@ export default function Chat() {
                   type="button"
                   onClick={clearImage}
                   className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {selectedFile && (
+              <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-white/5">
+                <FileUp className="w-4 h-4 text-primary" />
+                <span className="text-sm truncate flex-1">{selectedFile.name}</span>
+                <span className="text-xs text-white/40">{(selectedFile.size / 1024 / 1024).toFixed(2)}MB</span>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="p-1 hover:bg-white/10 rounded text-white/40 hover:text-white"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -688,12 +814,37 @@ export default function Chat() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!!editingMessage || uploadImage.isPending || isOffline}
                 className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                title="Upload image"
               >
                 {uploadImage.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <ImagePlus className="w-5 h-5" />
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={() => generalFileInputRef.current?.click()}
+                disabled={!!editingMessage || uploadFile.isPending || isOffline}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                title="Upload file (5MB max, 3hr expiry)"
+                data-testid="button-upload-file"
+              >
+                {uploadFile.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <FileUp className="w-5 h-5" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPollModal(true)}
+                disabled={!!editingMessage || isOffline}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                title="Create poll"
+                data-testid="button-create-poll"
+              >
+                <BarChart3 className="w-5 h-5" />
               </button>
               
               <div className="relative flex-1 flex items-center">
@@ -765,7 +916,7 @@ export default function Chat() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg h-[500px] glass-panel rounded-2xl flex flex-col overflow-hidden"
+              className="w-full max-w-lg h-[600px] glass-panel rounded-2xl flex flex-col overflow-hidden"
             >
               <div className="p-4 border-b border-white/10 flex items-center gap-3">
                 <button
@@ -780,8 +931,21 @@ export default function Chat() {
                 >
                   {dmChatUser.username.substring(0, 2).toUpperCase()}
                 </div>
-                <span className="font-medium">{dmChatUser.username}</span>
+                <span className="font-medium flex-1">{dmChatUser.username}</span>
               </div>
+
+              {/* Pinned Messages */}
+              {pinnedDMMessages.length > 0 && (
+                <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20">
+                  <div className="flex items-center gap-2 text-xs text-yellow-400 mb-1">
+                    <Pin className="w-3 h-3" />
+                    <span>Pinned Messages</span>
+                  </div>
+                  {pinnedDMMessages.slice(0, 2).map((dm: any) => (
+                    <p key={dm.id} className="text-xs text-white/60 truncate">{dm.content}</p>
+                  ))}
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {directMessages.length === 0 ? (
@@ -791,13 +955,45 @@ export default function Chat() {
                     <div
                       key={dm.id}
                       className={cn(
-                        "max-w-[80%] p-3 rounded-2xl text-sm",
-                        dm.fromUserId === user.id
-                          ? "ml-auto bg-primary text-white"
-                          : "bg-white/10"
+                        "group max-w-[80%] relative",
+                        dm.fromUserId === user.id ? "ml-auto" : ""
                       )}
                     >
-                      {dm.content}
+                      <div
+                        className={cn(
+                          "p-3 rounded-2xl text-sm",
+                          dm.fromUserId === user.id
+                            ? "bg-primary text-white"
+                            : "bg-white/10",
+                          dm.isPinned && "ring-1 ring-yellow-500/50"
+                        )}
+                      >
+                        {dm.isPinned && (
+                          <Pin className="w-3 h-3 text-yellow-400 inline mr-1" />
+                        )}
+                        {dm.content}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        {dm.fromUserId === user.id && (
+                          <span className="text-xs text-white/30 flex items-center gap-1">
+                            {dm.isRead ? (
+                              <>
+                                <CheckCheck className="w-3 h-3 text-blue-400" />
+                                <span className="text-blue-400">Seen</span>
+                              </>
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handlePinDM(dm.id, dm.isPinned)}
+                          className="invisible group-hover:visible p-1 hover:bg-white/10 rounded text-white/40 hover:text-yellow-400"
+                          title={dm.isPinned ? "Unpin" : "Pin"}
+                        >
+                          {dm.isPinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -821,6 +1017,100 @@ export default function Chat() {
                   <Send className="w-4 h-4" />
                 </button>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Poll Creation Modal */}
+      <AnimatePresence>
+        {showPollModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowPollModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md glass-panel rounded-2xl p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20 text-primary">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold">Create Poll</h3>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  placeholder="Ask a question..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-primary/50"
+                  data-testid="input-poll-question"
+                />
+
+                <div className="space-y-2">
+                  <p className="text-sm text-white/60">Options</p>
+                  {pollOptions.map((option, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...pollOptions];
+                          newOptions[idx] = e.target.value;
+                          setPollOptions(newOptions);
+                        }}
+                        placeholder={`Option ${idx + 1}`}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 outline-none focus:border-primary/50"
+                        data-testid={`input-poll-option-${idx}`}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                          className="p-2 hover:bg-white/10 rounded-lg text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions([...pollOptions, ""])}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Add option
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowPollModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePoll}
+                  disabled={createPoll.isPending}
+                  className="flex-1 py-3 rounded-xl bg-primary text-white disabled:opacity-50"
+                  data-testid="button-submit-poll"
+                >
+                  {createPoll.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Create Poll"}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

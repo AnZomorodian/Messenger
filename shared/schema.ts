@@ -48,7 +48,29 @@ export const directMessages = pgTable("direct_messages", {
   toUserId: integer("to_user_id").notNull(),
   content: text("content").notNull(),
   isEdited: boolean("is_edited").default(false),
+  isPinned: boolean("is_pinned").default(false),
+  isRead: boolean("is_read").default(false),
   timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const polls = pgTable("polls", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull(),
+  question: text("question").notNull(),
+  options: text("options").array().notNull(),
+  votes: text("votes").notNull().default("{}"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const files = pgTable("files", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id"),
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
+  size: integer("size").notNull(),
+  mimeType: text("mime_type").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
 });
 
 export const insertReactionSchema = z.object({
@@ -68,12 +90,31 @@ export const insertDirectMessageSchema = z.object({
   content: z.string(),
 });
 
+export const insertPollSchema = z.object({
+  messageId: z.number(),
+  question: z.string(),
+  options: z.array(z.string()),
+});
+
+export const insertFileSchema = z.object({
+  messageId: z.number().optional(),
+  filename: z.string(),
+  originalName: z.string(),
+  size: z.number(),
+  mimeType: z.string(),
+  expiresAt: z.date(),
+});
+
 export type Reaction = typeof reactions.$inferSelect;
 export type InsertReaction = z.infer<typeof insertReactionSchema>;
 export type DMRequest = typeof dmRequests.$inferSelect;
 export type InsertDMRequest = z.infer<typeof insertDMRequestSchema>;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
+export type Poll = typeof polls.$inferSelect;
+export type InsertPoll = z.infer<typeof insertPollSchema>;
+export type FileRecord = typeof files.$inferSelect;
+export type InsertFile = z.infer<typeof insertFileSchema>;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

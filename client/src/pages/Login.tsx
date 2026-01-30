@@ -32,11 +32,22 @@ export default function Login() {
       return;
     }
 
-    if (trimmedUsername.length < 2 || trimmedUsername.length > 20) {
+    if (trimmedUsername.length < 2 || trimmedUsername.length > 15) {
       toast({
         variant: "destructive",
         title: "Invalid username",
-        description: "Username must be 2-20 characters long.",
+        description: "Username must be 2-15 characters long.",
+      });
+      return;
+    }
+
+    // Only allow English letters, numbers, and underscores
+    const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
+    if (!englishOnlyRegex.test(trimmedUsername)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid username",
+        description: "Username can only contain English letters, numbers, and underscores.",
       });
       return;
     }

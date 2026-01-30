@@ -1,4 +1,4 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus, type DMRequest, type InsertDMRequest, type DirectMessage, type InsertDirectMessage, type DMRequestStatus } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus, type DMRequest, type InsertDMRequest, type DirectMessage, type InsertDirectMessage, type DMRequestStatus, type Poll, type InsertPoll, type FileRecord, type InsertFile } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -27,6 +27,21 @@ export interface IStorage {
   
   getDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
   createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  pinDirectMessage(messageId: number): Promise<DirectMessage | undefined>;
+  unpinDirectMessage(messageId: number): Promise<DirectMessage | undefined>;
+  getPinnedDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
+  markDirectMessagesAsRead(fromUserId: number, toUserId: number): Promise<void>;
+  getUnreadCount(userId: number, fromUserId: number): Promise<number>;
+  
+  createPoll(poll: InsertPoll): Promise<Poll>;
+  getPoll(messageId: number): Promise<Poll | undefined>;
+  votePoll(pollId: number, optionIndex: number, userId: number): Promise<Poll | undefined>;
+  
+  createFile(file: InsertFile): Promise<FileRecord>;
+  getFile(filename: string): Promise<FileRecord | undefined>;
+  deleteExpiredFiles(): Promise<string[]>;
+  
+  logoutUser(userId: number): Promise<void>;
   
   getAllUsers(): Promise<User[]>;
   getAllMessages(): Promise<(Message & { user?: User })[]>;
@@ -41,11 +56,15 @@ export class MemStorage implements IStorage {
   private userActivity: Map<number, Date>;
   private dmRequests: Map<number, DMRequest>;
   private directMessages: Map<number, DirectMessage>;
+  private polls: Map<number, Poll>;
+  private files: Map<number, FileRecord>;
   private currentUserId: number;
   private currentMessageId: number;
   private currentReactionId: number;
   private currentDMRequestId: number;
   private currentDirectMessageId: number;
+  private currentPollId: number;
+  private currentFileId: number;
 
   constructor() {
     this.users = new Map();
@@ -54,11 +73,15 @@ export class MemStorage implements IStorage {
     this.userActivity = new Map();
     this.dmRequests = new Map();
     this.directMessages = new Map();
+    this.polls = new Map();
+    this.files = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
     this.currentReactionId = 1;
     this.currentDMRequestId = 1;
     this.currentDirectMessageId = 1;
+    this.currentPollId = 1;
+    this.currentFileId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -270,9 +293,113 @@ export class MemStorage implements IStorage {
 
   async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
     const id = this.currentDirectMessageId++;
-    const dm: DirectMessage = { ...message, id, isEdited: false, timestamp: new Date() };
+    const dm: DirectMessage = { ...message, id, isEdited: false, isPinned: false, isRead: false, timestamp: new Date() };
     this.directMessages.set(id, dm);
     return dm;
+  }
+
+  async pinDirectMessage(messageId: number): Promise<DirectMessage | undefined> {
+    const dm = this.directMessages.get(messageId);
+    if (!dm) return undefined;
+    const updated = { ...dm, isPinned: true };
+    this.directMessages.set(messageId, updated);
+    return updated;
+  }
+
+  async unpinDirectMessage(messageId: number): Promise<DirectMessage | undefined> {
+    const dm = this.directMessages.get(messageId);
+    if (!dm) return undefined;
+    const updated = { ...dm, isPinned: false };
+    this.directMessages.set(messageId, updated);
+    return updated;
+  }
+
+  async getPinnedDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]> {
+    const msgs = Array.from(this.directMessages.values()).filter(
+      m => m.isPinned && ((m.fromUserId === userId1 && m.toUserId === userId2) ||
+           (m.fromUserId === userId2 && m.toUserId === userId1))
+    );
+    return msgs
+      .map(m => ({ ...m, fromUser: this.users.get(m.fromUserId) }))
+      .sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+  }
+
+  async markDirectMessagesAsRead(fromUserId: number, toUserId: number): Promise<void> {
+    this.directMessages.forEach((dm, id) => {
+      if (dm.fromUserId === fromUserId && dm.toUserId === toUserId && !dm.isRead) {
+        this.directMessages.set(id, { ...dm, isRead: true });
+      }
+    });
+  }
+
+  async getUnreadCount(userId: number, fromUserId: number): Promise<number> {
+    return Array.from(this.directMessages.values()).filter(
+      dm => dm.fromUserId === fromUserId && dm.toUserId === userId && !dm.isRead
+    ).length;
+  }
+
+  async createPoll(poll: InsertPoll): Promise<Poll> {
+    const id = this.currentPollId++;
+    const newPoll: Poll = { 
+      ...poll, 
+      id, 
+      votes: "{}",
+      timestamp: new Date() 
+    };
+    this.polls.set(id, newPoll);
+    return newPoll;
+  }
+
+  async getPoll(messageId: number): Promise<Poll | undefined> {
+    return Array.from(this.polls.values()).find(p => p.messageId === messageId);
+  }
+
+  async votePoll(pollId: number, optionIndex: number, userId: number): Promise<Poll | undefined> {
+    const poll = this.polls.get(pollId);
+    if (!poll) return undefined;
+    
+    const votes = JSON.parse(poll.votes) as Record<string, number>;
+    votes[userId.toString()] = optionIndex;
+    const updated = { ...poll, votes: JSON.stringify(votes) };
+    this.polls.set(pollId, updated);
+    return updated;
+  }
+
+  async createFile(file: InsertFile): Promise<FileRecord> {
+    const id = this.currentFileId++;
+    const newFile: FileRecord = { 
+      ...file, 
+      id,
+      messageId: file.messageId ?? null,
+      uploadedAt: new Date(),
+      expiresAt: file.expiresAt
+    };
+    this.files.set(id, newFile);
+    return newFile;
+  }
+
+  async getFile(filename: string): Promise<FileRecord | undefined> {
+    return Array.from(this.files.values()).find(f => f.filename === filename);
+  }
+
+  async deleteExpiredFiles(): Promise<string[]> {
+    const now = new Date();
+    const expired: string[] = [];
+    this.files.forEach((file, id) => {
+      if (file.expiresAt && file.expiresAt < now) {
+        expired.push(file.filename);
+        this.files.delete(id);
+      }
+    });
+    return expired;
+  }
+
+  async logoutUser(userId: number): Promise<void> {
+    this.userActivity.delete(userId);
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, status: "offline" });
+    }
   }
 
   async getAllUsers(): Promise<User[]> {

@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { insertUserSchema, insertMessageSchema, insertReactionSchema, insertDMRequestSchema, insertDirectMessageSchema } from "@shared/schema";
+import { insertUserSchema, insertMessageSchema, insertReactionSchema, insertDMRequestSchema, insertDirectMessageSchema, insertPollSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 
@@ -111,11 +111,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
-  // Auto-cleanup images older than 6 hours
-  const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+  // Auto-cleanup files older than 3 hours
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
   
-  const cleanupOldImages = () => {
+  const cleanupOldFiles = async () => {
     try {
+      // Cleanup from storage
+      const expiredFilenames = await storage.deleteExpiredFiles();
+      
+      // Cleanup from disk
       const files = fs.readdirSync(uploadsDir);
       const now = Date.now();
       
@@ -124,20 +128,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const stats = fs.statSync(filepath);
         const age = now - stats.mtimeMs;
         
-        if (age > SIX_HOURS_MS) {
+        if (age > THREE_HOURS_MS) {
           fs.unlinkSync(filepath);
-          console.log(`Cleaned up old image: ${file}`);
+          console.log(`Cleaned up old file: ${file}`);
         }
       });
     } catch (e) {
-      console.error("Image cleanup error:", e);
+      console.error("File cleanup error:", e);
     }
   };
   
-  // Run cleanup every hour
-  setInterval(cleanupOldImages, 60 * 60 * 1000);
+  // Run cleanup every 30 minutes
+  setInterval(cleanupOldFiles, 30 * 60 * 1000);
   // Also run immediately on startup
-  cleanupOldImages();
+  cleanupOldFiles();
 
   app.post("/api/upload", async (req, res) => {
     try {
@@ -173,6 +177,62 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         
         fs.writeFileSync(filepath, Buffer.from(data, "base64"));
         res.json({ url: `/uploads/${filename}` });
+      });
+
+      req.on("error", () => {
+        res.status(500).json({ message: "Upload failed" });
+      });
+    } catch (e) {
+      res.status(500).json({ message: "Upload failed" });
+    }
+  });
+
+  // File upload endpoint (5MB limit, 3-hour auto-delete)
+  app.post("/api/upload/file", async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      const maxSize = 5 * 1024 * 1024;
+
+      req.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxSize) {
+          res.status(413).json({ message: "File too large. Max 5MB allowed." });
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      req.on("end", async () => {
+        if (res.headersSent) return;
+        
+        const buffer = Buffer.concat(chunks);
+        const base64Data = buffer.toString();
+        const matches = base64Data.match(/^data:([^;]+);base64,(.+)$/);
+        
+        if (!matches) {
+          return res.status(400).json({ message: "Invalid file format" });
+        }
+        
+        const mimeType = matches[1];
+        const data = matches[2];
+        const ext = mimeType.split('/')[1] || 'bin';
+        const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const filepath = path.join(uploadsDir, filename);
+        
+        fs.writeFileSync(filepath, Buffer.from(data, "base64"));
+        
+        const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000);
+        await storage.createFile({
+          filename,
+          originalName: req.headers['x-original-name'] as string || filename,
+          size: Buffer.from(data, "base64").length,
+          mimeType,
+          expiresAt
+        });
+        
+        res.json({ url: `/uploads/${filename}`, expiresAt });
       });
 
       req.on("error", () => {
@@ -266,6 +326,75 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (e) {
       res.status(400).json({ message: "Invalid message" });
     }
+  });
+
+  app.post("/api/dm/messages/:id/pin", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const message = await storage.pinDirectMessage(id);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
+  app.post("/api/dm/messages/:id/unpin", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const message = await storage.unpinDirectMessage(id);
+    if (!message) return res.status(404).json({ message: "Not found" });
+    res.json(message);
+  });
+
+  app.get("/api/dm/pinned/:userId1/:userId2", async (req, res) => {
+    const userId1 = parseInt(req.params.userId1);
+    const userId2 = parseInt(req.params.userId2);
+    const messages = await storage.getPinnedDirectMessages(userId1, userId2);
+    res.json(messages);
+  });
+
+  app.post("/api/dm/read", async (req, res) => {
+    const { fromUserId, toUserId } = req.body;
+    await storage.markDirectMessagesAsRead(fromUserId, toUserId);
+    res.json({ success: true });
+  });
+
+  app.get("/api/dm/unread/:userId/:fromUserId", async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const fromUserId = parseInt(req.params.fromUserId);
+    const count = await storage.getUnreadCount(userId, fromUserId);
+    res.json({ count });
+  });
+
+  // Poll endpoints
+  app.post("/api/polls", async (req, res) => {
+    try {
+      const input = insertPollSchema.parse(req.body);
+      const poll = await storage.createPoll(input);
+      res.status(201).json(poll);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid poll" });
+    }
+  });
+
+  app.get("/api/polls/:messageId", async (req, res) => {
+    const messageId = parseInt(req.params.messageId);
+    const poll = await storage.getPoll(messageId);
+    if (!poll) return res.status(404).json({ message: "Not found" });
+    res.json(poll);
+  });
+
+  app.post("/api/polls/:id/vote", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { optionIndex, userId } = req.body;
+    const poll = await storage.votePoll(id, optionIndex, userId);
+    if (!poll) return res.status(404).json({ message: "Not found" });
+    res.json(poll);
+  });
+
+  // Logout endpoint
+  app.post("/api/logout", async (req, res) => {
+    const { userId } = req.body;
+    if (userId) {
+      await storage.logoutUser(userId);
+    }
+    res.json({ success: true });
   });
 
   app.get("/api/admin/users", async (req, res) => {
