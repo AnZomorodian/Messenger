@@ -7,6 +7,8 @@ A real-time chat/messenger application built with React frontend and Express bac
 ## Features
 - **Real-time messaging** with 1-second polling
 - **Photo sharing** with 2MB limit and download button (auto-deleted after 6 hours)
+- **File sharing** with 5MB limit and 3-hour auto-deletion
+- **Poll creation** with visual voting results in public messages
 - **Message reactions** with 8 quick-reaction emojis + 168-emoji picker
 - **Reply to messages** with inline preview
 - **Edit messages** (if not locked)
@@ -16,7 +18,10 @@ A real-time chat/messenger application built with React frontend and Express bac
 - **Manual refresh button** for active users list
 - **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*), Ctrl+U for underline (__text__)
 - **Direct messaging** - Request/accept workflow for private conversations
-- **Username validation** - Reserved usernames blocked, duplicate active usernames prevented
+- **DM pin messages** - Pin and unpin important messages in direct conversations
+- **DM seen notifications** - Visual indicators showing when messages are read
+- **Username validation** - Max 15 characters, English only (letters, numbers, underscores), reserved usernames blocked
+- **Auto logout** - Username freed when user signs out or closes tab
 - **24 color options** - Vibrant color picker with 6x4 grid
 - **Admin Panel** - Password-protected panel at /admin to manage users and messages (password: admin123)
 - **About Modal** - Info icon showing developer credits (Artin Zomorodian) and app features
