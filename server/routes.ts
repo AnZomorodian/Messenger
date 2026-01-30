@@ -63,7 +63,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.patch(api.messages.update.path, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(req.params.id as string);
       const { content } = z.object({ content: z.string() }).parse(req.body);
       const message = await storage.updateMessage(id, content);
       if (!message) return res.status(404).json({ message: "Not found" });
@@ -74,7 +74,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete(api.messages.delete.path, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const message = await storage.getMessage(id);
     if (!message) return res.status(404).json({ message: "Not found" });
     if (message.isLocked) {
@@ -390,8 +390,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/dm/unread/:userId/:fromUserId", async (req, res) => {
-    const userId = parseInt(req.params.userId);
-    const fromUserId = parseInt(req.params.fromUserId);
+    const userId = parseInt(req.params.userId as string);
+    const fromUserId = parseInt(req.params.fromUserId as string);
     const count = await storage.getUnreadCount(userId, fromUserId);
     res.json({ count });
   });

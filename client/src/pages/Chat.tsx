@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
@@ -218,9 +219,22 @@ export default function Chat() {
   const handleSendDM = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !dmChatUser || !dmContent.trim()) return;
-    sendDirectMessage.mutate({ fromUserId: user.id, toUserId: dmChatUser.id, content: dmContent }, {
-      onSuccess: () => setDmContent("")
-    });
+
+    if (dmEditingMessage) {
+      fetch(`/api/dm/messages/${dmEditingMessage.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: dmContent })
+      }).then(() => {
+        setDmContent("");
+        setDmEditingMessage(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+      });
+    } else {
+      sendDirectMessage.mutate({ fromUserId: user.id, toUserId: dmChatUser.id, content: dmContent }, {
+        onSuccess: () => setDmContent("")
+      });
+    }
   };
 
   const handleStatusChange = (status: UserStatus) => {
@@ -501,6 +515,22 @@ export default function Chat() {
     setContent(msg.content);
   };
 
+  const [dmEditingMessage, setDmEditingMessage] = useState<any>(null);
+
+  const handleEditDM = (msg: any) => {
+    setDmEditingMessage(msg);
+    setDmContent(msg.content);
+  };
+
+  const handleLockDM = (messageId: number) => {
+    if (!user) return;
+    fetch(`/api/dm/messages/${messageId}/lock`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id })
+    }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] }));
+  };
+
   const handleReply = (msg: Message & { user?: User }) => {
     setReplyTo(msg);
     setEditingMessage(null);
@@ -599,13 +629,24 @@ export default function Chat() {
                   </div>
                   <div className={cn("absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background", statusInfo.color)} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate text-sm">
-                    {u.username}
-                    {u.id === user.id && <span className="ml-2 text-xs text-white/40">(You)</span>}
-                  </p>
-                  <p className="text-xs text-white/40 truncate">{statusInfo.label}</p>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate text-sm">
+                        {u.username}
+                        {u.id === user.id && <span className="ml-2 text-xs text-white/40">(You)</span>}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setContent(prev => prev + `@${u.username} `);
+                          inputRef.current?.focus();
+                        }}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        Mention
+                      </button>
+                    </div>
+                    <p className="text-xs text-white/40 truncate">{statusInfo.label}</p>
+                  </div>
                 {u.id !== user.id && (
                   isPartner ? (
                     <button

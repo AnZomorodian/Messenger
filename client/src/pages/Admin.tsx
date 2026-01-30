@@ -150,7 +150,7 @@ export default function Admin() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
@@ -180,6 +180,19 @@ export default function Admin() {
           <Card className="bg-zinc-900/50 border-zinc-800">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">Admin</p>
+                  <p className="text-white/60 text-sm">System Status: Active</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center">
                   <Trash2 className="w-6 h-6 text-red-400" />
                 </div>
@@ -194,7 +207,7 @@ export default function Admin() {
                   disabled={clearAllMessages.isPending}
                   data-testid="button-clear-all"
                 >
-                  Clear All Messages
+                  Clear All
                 </Button>
               </div>
             </CardContent>
