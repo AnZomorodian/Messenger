@@ -446,6 +446,14 @@ export class MemStorage implements IStorage {
     return expired;
   }
 
+  async logoutUser(userId: number): Promise<void> {
+    this.userActivity.delete(userId);
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, { ...user, status: "offline" });
+    }
+  }
+
   async createWitnessRequest(initiatorId: number, partnerId: number, witnessId: number): Promise<any> {
     const id = this.currentDMRequestId++; // Reusing counter for simplicity
     const request = { id, chatInitiatorId: initiatorId, chatPartnerId: partnerId, witnessId, status: "pending", timestamp: new Date() };

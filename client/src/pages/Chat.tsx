@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
@@ -8,10 +9,10 @@ import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smil
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import type { User, Message } from "@shared/schema";
+import type { User, Message, UserStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { userStatuses, type UserStatus } from "@shared/schema";
+import { userStatuses } from "@shared/schema";
 
 const STATUS_CONFIG: Record<UserStatus, { label: string; color: string; icon: typeof Circle }> = {
   online: { label: "Online", color: "bg-green-500", icon: Circle },
@@ -228,7 +229,7 @@ export default function Chat() {
       }).then(() => {
         setDmContent("");
         setDmEditingMessage(null);
-        queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dm/messages", user.id, dmChatUser?.id] });
       });
     } else {
       sendDirectMessage.mutate({ fromUserId: user.id, toUserId: dmChatUser.id, content: dmContent }, {
@@ -528,7 +529,7 @@ export default function Chat() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })
-    }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/dm/messages"] }));
+    }).then(() => queryClient.invalidateQueries({ queryKey: ["/api/dm/messages", user.id, dmChatUser?.id] }));
   };
 
   const handleReply = (msg: Message & { user?: User }) => {
