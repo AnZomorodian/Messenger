@@ -31,14 +31,49 @@ export const reactions = pgTable("reactions", {
   emoji: text("emoji").notNull(),
 });
 
+export const dmRequestStatuses = ["pending", "accepted", "rejected"] as const;
+export type DMRequestStatus = typeof dmRequestStatuses[number];
+
+export const dmRequests = pgTable("dm_requests", {
+  id: serial("id").primaryKey(),
+  fromUserId: integer("from_user_id").notNull(),
+  toUserId: integer("to_user_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  fromUserId: integer("from_user_id").notNull(),
+  toUserId: integer("to_user_id").notNull(),
+  content: text("content").notNull(),
+  isEdited: boolean("is_edited").default(false),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
 export const insertReactionSchema = z.object({
   messageId: z.number(),
   userId: z.number(),
   emoji: z.string(),
 });
 
+export const insertDMRequestSchema = z.object({
+  fromUserId: z.number(),
+  toUserId: z.number(),
+});
+
+export const insertDirectMessageSchema = z.object({
+  fromUserId: z.number(),
+  toUserId: z.number(),
+  content: z.string(),
+});
+
 export type Reaction = typeof reactions.$inferSelect;
 export type InsertReaction = z.infer<typeof insertReactionSchema>;
+export type DMRequest = typeof dmRequests.$inferSelect;
+export type InsertDMRequest = z.infer<typeof insertDMRequestSchema>;
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

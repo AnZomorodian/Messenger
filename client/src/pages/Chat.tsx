@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage } from "@/hooks/use-chat";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
-import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw } from "lucide-react";
+import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,46 @@ export default function Chat() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dmChatUser, setDmChatUser] = useState<User | null>(null);
+  const [dmContent, setDmContent] = useState("");
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      wrapSelectedText('**');
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
+      e.preventDefault();
+      wrapSelectedText('*');
+    }
+  };
+
+  const wrapSelectedText = (wrapper: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+    
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const text = content;
+    
+    if (start !== end) {
+      const selectedText = text.substring(start, end);
+      const newText = text.substring(0, start) + wrapper + selectedText + wrapper + text.substring(end);
+      setContent(newText);
+      setTimeout(() => {
+        input.setSelectionRange(start + wrapper.length, end + wrapper.length);
+        input.focus();
+      }, 0);
+    } else {
+      const newText = text.substring(0, start) + wrapper + wrapper + text.substring(end);
+      setContent(newText);
+      setTimeout(() => {
+        input.setSelectionRange(start + wrapper.length, start + wrapper.length);
+        input.focus();
+      }, 0);
+    }
+  };
 
   // Load user session
   useEffect(() => {
@@ -84,7 +124,44 @@ export default function Chat() {
   const lockMessage = useLockMessage();
   const unlockMessage = useUnlockMessage();
   const deleteMessage = useDeleteMessage();
+  const { data: dmRequests = [] } = useDMRequests(user?.id);
+  const sendDMRequest = useSendDMRequest();
+  const respondDMRequest = useRespondDMRequest();
+  const { data: dmPartners = [] } = useDMPartners(user?.id);
+  const { data: directMessages = [] } = useDirectMessages(user?.id, dmChatUser?.id);
+  const sendDirectMessage = useSendDirectMessage();
   useHeartbeat(user?.id);
+
+  const pendingRequests = dmRequests.filter((r: any) => r.status === "pending" && r.toUserId === user?.id);
+
+  const handleSendDMRequest = (toUser: User) => {
+    if (!user) return;
+    sendDMRequest.mutate({ fromUserId: user.id, toUserId: toUser.id }, {
+      onSuccess: () => {
+        toast({ title: "DM Request Sent", description: `Request sent to ${toUser.username}` });
+      }
+    });
+  };
+
+  const handleAcceptDM = (requestId: number) => {
+    respondDMRequest.mutate({ requestId, status: "accepted" }, {
+      onSuccess: () => {
+        toast({ title: "Accepted", description: "You can now chat privately!" });
+      }
+    });
+  };
+
+  const handleRejectDM = (requestId: number) => {
+    respondDMRequest.mutate({ requestId, status: "rejected" });
+  };
+
+  const handleSendDM = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !dmChatUser || !dmContent.trim()) return;
+    sendDirectMessage.mutate({ fromUserId: user.id, toUserId: dmChatUser.id, content: dmContent }, {
+      onSuccess: () => setDmContent("")
+    });
+  };
 
   const handleStatusChange = (status: UserStatus) => {
     if (!user) return;
@@ -330,6 +407,11 @@ export default function Chat() {
           </div>
           {users.map((u) => {
             const statusInfo = STATUS_CONFIG[(u.status as UserStatus) || "online"];
+            const isPartner = dmPartners.some((p: User) => p.id === u.id);
+            const hasPendingRequest = dmRequests.some((r: any) => 
+              (r.fromUserId === user.id && r.toUserId === u.id) || 
+              (r.fromUserId === u.id && r.toUserId === user.id)
+            );
             return (
               <div 
                 key={u.id} 
@@ -354,9 +436,61 @@ export default function Chat() {
                   </p>
                   <p className="text-xs text-white/40 truncate">{statusInfo.label}</p>
                 </div>
+                {u.id !== user.id && (
+                  isPartner ? (
+                    <button
+                      onClick={() => setDmChatUser(u)}
+                      className="p-2 hover:bg-white/10 rounded-lg text-primary"
+                      title="Open DM"
+                      data-testid={`button-dm-chat-${u.id}`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  ) : !hasPendingRequest ? (
+                    <button
+                      onClick={() => handleSendDMRequest(u)}
+                      className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white"
+                      title="Send DM request"
+                      data-testid={`button-dm-request-${u.id}`}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <span className="text-xs text-white/30">Pending</span>
+                  )
+                )}
               </div>
             );
           })}
+
+          {pendingRequests.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 px-2">DM Requests</h3>
+              {pendingRequests.map((r: any) => (
+                <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 mb-2">
+                  <span className="flex-1 text-sm truncate" style={{ color: r.fromUser?.color }}>
+                    {r.fromUser?.username}
+                  </span>
+                  <button
+                    onClick={() => handleAcceptDM(r.id)}
+                    className="p-1.5 hover:bg-green-500/20 rounded text-green-400"
+                    title="Accept"
+                    data-testid={`button-accept-dm-${r.id}`}
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleRejectDM(r.id)}
+                    className="p-1.5 hover:bg-red-500/20 rounded text-red-400"
+                    title="Reject"
+                    data-testid={`button-reject-dm-${r.id}`}
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t border-white/10 space-y-3">
@@ -544,10 +678,12 @@ export default function Chat() {
               
               <div className="relative flex-1 flex items-center">
                 <input
+                  ref={inputRef}
                   type="text"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder={isOffline ? "You're offline..." : editingMessage ? "Edit message..." : "Type a message..."}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isOffline ? "You're offline..." : editingMessage ? "Edit message..." : "Type a message... (Ctrl+B: bold, Ctrl+I: italic)"}
                   className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary/50 text-white placeholder:text-white/30 rounded-2xl px-6 py-4 pr-14 outline-none transition-all shadow-inner disabled:opacity-50"
                   disabled={sendMessage.isPending || updateMessage.isPending || isOffline}
                 />
@@ -593,6 +729,82 @@ export default function Chat() {
           </div>
         </div>
       </main>
+
+      {/* DM Chat Modal */}
+      <AnimatePresence>
+        {dmChatUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setDmChatUser(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg h-[500px] glass-panel rounded-2xl flex flex-col overflow-hidden"
+            >
+              <div className="p-4 border-b border-white/10 flex items-center gap-3">
+                <button
+                  onClick={() => setDmChatUser(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                  style={{ backgroundColor: dmChatUser.color }}
+                >
+                  {dmChatUser.username.substring(0, 2).toUpperCase()}
+                </div>
+                <span className="font-medium">{dmChatUser.username}</span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {directMessages.length === 0 ? (
+                  <p className="text-center text-white/40 text-sm py-8">No messages yet. Say hello!</p>
+                ) : (
+                  directMessages.map((dm: any) => (
+                    <div
+                      key={dm.id}
+                      className={cn(
+                        "max-w-[80%] p-3 rounded-2xl text-sm",
+                        dm.fromUserId === user.id
+                          ? "ml-auto bg-primary text-white"
+                          : "bg-white/10"
+                      )}
+                    >
+                      {dm.content}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <form onSubmit={handleSendDM} className="p-4 border-t border-white/10 flex gap-3">
+                <input
+                  type="text"
+                  value={dmContent}
+                  onChange={(e) => setDmContent(e.target.value)}
+                  placeholder="Type a message..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 outline-none focus:border-primary/50"
+                  data-testid="input-dm-message"
+                />
+                <button
+                  type="submit"
+                  disabled={!dmContent.trim()}
+                  className="p-3 rounded-xl bg-primary text-white disabled:opacity-50"
+                  data-testid="button-send-dm"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

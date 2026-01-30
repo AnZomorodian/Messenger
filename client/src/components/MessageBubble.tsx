@@ -7,6 +7,34 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "👏", "🎉"];
 
+function formatText(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)/g;
+  let match;
+  let keyIndex = 0;
+  
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    
+    if (match[1]) {
+      parts.push(<strong key={keyIndex++}>{match[2]}</strong>);
+    } else if (match[3]) {
+      parts.push(<em key={keyIndex++}>{match[4]}</em>);
+    }
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  
+  return parts.length > 0 ? parts : [text];
+}
+
 interface MessageBubbleProps {
   message: Message & { user?: User, replyTo?: Message & { user?: User }, reactions?: Reaction[], lockedByUser?: User };
   isCurrentUser: boolean;
@@ -205,7 +233,7 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
                 </button>
               </div>
             )}
-            {message.content && <p>{message.content}</p>}
+            {message.content && <p>{formatText(message.content)}</p>}
             
             <div className={cn(
               "text-[10px] opacity-50 mt-1 w-full flex justify-between items-center gap-2",

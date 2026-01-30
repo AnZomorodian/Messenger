@@ -1,4 +1,4 @@
-import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus } from "@shared/schema";
+import { users, messages, type User, type InsertUser, type Message, type InsertMessage, type Reaction, type InsertReaction, type UserStatus, type DMRequest, type InsertDMRequest, type DirectMessage, type InsertDirectMessage, type DMRequestStatus } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -19,6 +19,14 @@ export interface IStorage {
   getReactions(messageId: number): Promise<Reaction[]>;
   addReaction(reaction: InsertReaction): Promise<Reaction>;
   removeReaction(messageId: number, userId: number, emoji: string): Promise<boolean>;
+  
+  createDMRequest(request: InsertDMRequest): Promise<DMRequest>;
+  getDMRequests(userId: number): Promise<(DMRequest & { fromUser?: User, toUser?: User })[]>;
+  updateDMRequestStatus(requestId: number, status: DMRequestStatus): Promise<DMRequest | undefined>;
+  getAcceptedDMPartners(userId: number): Promise<User[]>;
+  
+  getDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]>;
+  createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
 }
 
 export class MemStorage implements IStorage {
@@ -26,18 +34,26 @@ export class MemStorage implements IStorage {
   private messages: Map<number, Message>;
   private reactions: Map<number, Reaction>;
   private userActivity: Map<number, Date>;
+  private dmRequests: Map<number, DMRequest>;
+  private directMessages: Map<number, DirectMessage>;
   private currentUserId: number;
   private currentMessageId: number;
   private currentReactionId: number;
+  private currentDMRequestId: number;
+  private currentDirectMessageId: number;
 
   constructor() {
     this.users = new Map();
     this.messages = new Map();
     this.reactions = new Map();
     this.userActivity = new Map();
+    this.dmRequests = new Map();
+    this.directMessages = new Map();
     this.currentUserId = 1;
     this.currentMessageId = 1;
     this.currentReactionId = 1;
+    this.currentDMRequestId = 1;
+    this.currentDirectMessageId = 1;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -188,6 +204,65 @@ export class MemStorage implements IStorage {
       return this.reactions.delete(reaction.id);
     }
     return false;
+  }
+
+  async createDMRequest(request: InsertDMRequest): Promise<DMRequest> {
+    const existing = Array.from(this.dmRequests.values()).find(
+      r => (r.fromUserId === request.fromUserId && r.toUserId === request.toUserId) ||
+           (r.fromUserId === request.toUserId && r.toUserId === request.fromUserId)
+    );
+    if (existing) return existing;
+    
+    const id = this.currentDMRequestId++;
+    const dmRequest: DMRequest = { ...request, id, status: "pending", timestamp: new Date() };
+    this.dmRequests.set(id, dmRequest);
+    return dmRequest;
+  }
+
+  async getDMRequests(userId: number): Promise<(DMRequest & { fromUser?: User, toUser?: User })[]> {
+    const requests = Array.from(this.dmRequests.values()).filter(
+      r => r.toUserId === userId || r.fromUserId === userId
+    );
+    return requests.map(r => ({
+      ...r,
+      fromUser: this.users.get(r.fromUserId),
+      toUser: this.users.get(r.toUserId)
+    }));
+  }
+
+  async updateDMRequestStatus(requestId: number, status: DMRequestStatus): Promise<DMRequest | undefined> {
+    const request = this.dmRequests.get(requestId);
+    if (!request) return undefined;
+    const updated = { ...request, status };
+    this.dmRequests.set(requestId, updated);
+    return updated;
+  }
+
+  async getAcceptedDMPartners(userId: number): Promise<User[]> {
+    const acceptedRequests = Array.from(this.dmRequests.values()).filter(
+      r => r.status === "accepted" && (r.fromUserId === userId || r.toUserId === userId)
+    );
+    const partnerIds = acceptedRequests.map(r => 
+      r.fromUserId === userId ? r.toUserId : r.fromUserId
+    );
+    return partnerIds.map(id => this.users.get(id)).filter((u): u is User => !!u);
+  }
+
+  async getDirectMessages(userId1: number, userId2: number): Promise<(DirectMessage & { fromUser?: User })[]> {
+    const msgs = Array.from(this.directMessages.values()).filter(
+      m => (m.fromUserId === userId1 && m.toUserId === userId2) ||
+           (m.fromUserId === userId2 && m.toUserId === userId1)
+    );
+    return msgs
+      .map(m => ({ ...m, fromUser: this.users.get(m.fromUserId) }))
+      .sort((a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0));
+  }
+
+  async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
+    const id = this.currentDirectMessageId++;
+    const dm: DirectMessage = { ...message, id, isEdited: false, timestamp: new Date() };
+    this.directMessages.set(id, dm);
+    return dm;
   }
 }
 

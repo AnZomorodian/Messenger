@@ -14,6 +14,18 @@ const VIBRANT_COLORS = [
   "#8E8E93", // Gray
   "#E056FD", // Magenta
   "#0BE881", // Mint
+  "#1ABC9C", // Teal
+  "#3498DB", // Sky Blue
+  "#9B59B6", // Amethyst
+  "#34495E", // Dark Gray
+  "#16A085", // Sea Green
+  "#27AE60", // Emerald
+  "#2980B9", // Ocean Blue
+  "#8E44AD", // Violet
+  "#F39C12", // Sunflower
+  "#D35400", // Pumpkin
+  "#C0392B", // Crimson
+  "#2C3E50", // Midnight
 ];
 
 interface ColorPickerProps {
@@ -24,7 +36,7 @@ interface ColorPickerProps {
 
 export function ColorPicker({ selectedColor, onSelect, className }: ColorPickerProps) {
   return (
-    <div className={cn("grid grid-cols-4 gap-3", className)}>
+    <div className={cn("grid grid-cols-6 gap-2", className)}>
       {VIBRANT_COLORS.map((color) => (
         <button
           key={color}

@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import { insertUserSchema, insertMessageSchema, insertReactionSchema } from "@shared/schema";
+import { insertUserSchema, insertMessageSchema, insertReactionSchema, insertDMRequestSchema, insertDirectMessageSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 
@@ -16,6 +16,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       if (!user) {
         user = await storage.createUser(input);
       } else {
+        const activeUsers = await storage.getActiveUsers();
+        const isActive = activeUsers.some(u => u.id === user!.id);
+        if (isActive) {
+          return res.status(409).json({ message: "Username is already in use by an active user" });
+        }
         await storage.updateUserActivity(user.id);
       }
       res.json(user);
@@ -211,6 +216,56 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const message = await storage.unlockMessage(id);
     if (!message) return res.status(404).json({ message: "Not found" });
     res.json(message);
+  });
+
+  app.post("/api/dm/request", async (req, res) => {
+    try {
+      const input = insertDMRequestSchema.parse(req.body);
+      const request = await storage.createDMRequest(input);
+      res.status(201).json(request);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  app.get("/api/dm/requests/:userId", async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const requests = await storage.getDMRequests(userId);
+    res.json(requests);
+  });
+
+  app.patch("/api/dm/request/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+    if (!["accepted", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+    const request = await storage.updateDMRequestStatus(id, status);
+    if (!request) return res.status(404).json({ message: "Not found" });
+    res.json(request);
+  });
+
+  app.get("/api/dm/partners/:userId", async (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const partners = await storage.getAcceptedDMPartners(userId);
+    res.json(partners);
+  });
+
+  app.get("/api/dm/messages/:userId1/:userId2", async (req, res) => {
+    const userId1 = parseInt(req.params.userId1);
+    const userId2 = parseInt(req.params.userId2);
+    const messages = await storage.getDirectMessages(userId1, userId2);
+    res.json(messages);
+  });
+
+  app.post("/api/dm/messages", async (req, res) => {
+    try {
+      const input = insertDirectMessageSchema.parse(req.body);
+      const message = await storage.createDirectMessage(input);
+      res.status(201).json(message);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid message" });
+    }
   });
 
   return httpServer;

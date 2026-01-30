@@ -265,3 +265,91 @@ export function useDeleteMessage() {
     },
   });
 }
+
+// === DIRECT MESSAGES ===
+
+export function useDMRequests(userId: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/dm/requests", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      return fetcher(`/api/dm/requests/${userId}`);
+    },
+    enabled: !!userId,
+    refetchInterval: 3000,
+  });
+}
+
+export function useSendDMRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fromUserId, toUserId }: { fromUserId: number; toUserId: number }) => {
+      return fetcher("/api/dm/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromUserId, toUserId }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/partners"] });
+    },
+  });
+}
+
+export function useRespondDMRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, status }: { requestId: number; status: "accepted" | "rejected" }) => {
+      return fetcher(`/api/dm/request/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/partners"] });
+    },
+  });
+}
+
+export function useDMPartners(userId: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/dm/partners", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      return fetcher(`/api/dm/partners/${userId}`);
+    },
+    enabled: !!userId,
+    refetchInterval: 5000,
+  });
+}
+
+export function useDirectMessages(userId1: number | undefined, userId2: number | undefined) {
+  return useQuery({
+    queryKey: ["/api/dm/messages", userId1, userId2],
+    queryFn: async () => {
+      if (!userId1 || !userId2) return [];
+      return fetcher(`/api/dm/messages/${userId1}/${userId2}`);
+    },
+    enabled: !!userId1 && !!userId2,
+    refetchInterval: 1000,
+  });
+}
+
+export function useSendDirectMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fromUserId, toUserId, content }: { fromUserId: number; toUserId: number; content: string }) => {
+      return fetcher("/api/dm/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromUserId, toUserId, content }),
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/messages", variables.fromUserId, variables.toUserId] });
+    },
+  });
+}

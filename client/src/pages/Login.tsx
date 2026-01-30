@@ -89,7 +89,7 @@ export default function Login() {
           <h1 className="text-5xl font-bold mb-3 font-display bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
             OCHAT
           </h1>
-          <p className="text-muted-foreground text-sm">Simple. Fast. Connected.</p>
+          <p className="text-muted-foreground text-sm">Simple, Fast, Connected.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
