@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   avatar: text("avatar"),
   password: text("password"),
   isLocked: boolean("is_locked").default(false),
+  isVerified: boolean("is_verified").default(false),
   notificationsEnabled: boolean("notifications_enabled").default(true),
   privacyMode: boolean("privacy_mode").default(false),
 });
@@ -154,6 +155,7 @@ export const updateUserSchema = createInsertSchema(users).pick({
   avatar: true,
   password: true,
   isLocked: true,
+  isVerified: true,
   notificationsEnabled: true,
   privacyMode: true,
 }).partial();

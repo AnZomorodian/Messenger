@@ -119,6 +119,7 @@ export class MemStorage implements IStorage {
       avatar: insertUser.avatar || null,
       password: insertUser.password || null,
       isLocked: insertUser.isLocked || false,
+      isVerified: true,
       notificationsEnabled: insertUser.notificationsEnabled ?? true,
       privacyMode: insertUser.privacyMode || false
     };

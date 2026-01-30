@@ -119,12 +119,19 @@ export function MessageBubble({ message, isCurrentUser, currentUserId, onReply, 
         )}
       >
         {!isCurrentUser && (
-          <span 
-            className="text-xs font-semibold mb-1 ml-1" 
-            style={{ color: message.user?.color || "#fff" }}
-          >
-            {message.user?.username || "Unknown"}
-          </span>
+          <div className="flex items-center gap-1 mb-1 ml-1">
+            <span 
+              className="text-xs font-semibold" 
+              style={{ color: message.user?.color || "#fff" }}
+            >
+              {message.user?.username || "Unknown"}
+            </span>
+            {message.user?.isVerified && (
+              <svg className="w-3 h-3 text-blue-400 fill-current" viewBox="0 0 24 24" title="Verified Account">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+            )}
+          </div>
         )}
         
         {message.replyTo && (
