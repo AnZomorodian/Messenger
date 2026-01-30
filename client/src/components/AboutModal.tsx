@@ -27,7 +27,7 @@ export function AboutModal() {
           <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 border border-primary/20">
             <p className="text-white/80 dark:text-white/80 text-gray-700 flex items-center gap-2">
               <Heart className="w-4 h-4 text-red-400 animate-pulse" />
-              Built with love by <span className="font-bold text-primary">Artin Zomorodian</span>
+              Built By <span className="font-bold text-primary">Artin Zomorodian</span>
             </p>
             <p className="text-xs text-white/40 mt-1">Version 2.5 - Optimized for Speed & Privacy</p>
           </div>

@@ -116,6 +116,10 @@ export default function Chat() {
         setShowSettingsModal(false);
         toast({ title: "Profile Updated" });
         refetchUsers();
+        // Update edit fields with new values
+        setEditName(updated.username);
+        setEditBio(updated.bio || "");
+        setEditColor(updated.color || "#7c3aed");
       }
     })
     .catch(err => {
@@ -457,9 +461,11 @@ export default function Chat() {
     if (!content.trim() && !selectedImage) return;
     if (!user) return;
     
-    // Block self-mentions
     const selfMentionRegex = new RegExp(`@${user.username}\\b`, 'i');
-    if (selfMentionRegex.test(content)) {
+    const mentionMatches = content.match(/@\w+/g);
+    const mentionsOthers = mentionMatches?.some(m => m.toLowerCase() !== `@${user.username}`.toLowerCase());
+
+    if (selfMentionRegex.test(content) && !mentionsOthers) {
       toast({
         variant: "destructive",
         title: "Can't mention yourself",
@@ -727,36 +733,31 @@ export default function Chat() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="font-display font-bold text-xl tracking-tight">OCHAT</h1>
-              <div className="flex items-center gap-3 mt-1.5">
-                <div className="flex items-center gap-1">
-                  <ThemeToggle />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowSettingsModal(true)}
-                    className="w-8 h-8 rounded-full hover-elevate"
-                    data-testid="button-settings"
-                    title="Settings"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                <div className="h-4 w-[1px] bg-border/40" />
-                
-                <div className="flex items-center gap-2">
-                  <div className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/40 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
+                <div className="flex flex-col">
+                  <h1 className="font-display font-bold text-lg tracking-tight leading-none">OCHAT</h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <ThemeToggle />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowSettingsModal(true)}
+                      className="w-7 h-7 rounded-full hover-elevate"
+                      data-testid="button-settings"
+                      title="Settings"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </Button>
+                    <div className="flex items-center gap-1 ml-0.5">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/40 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                      </span>
+                      <span className="text-[8px] uppercase tracking-tighter text-muted-foreground font-bold whitespace-nowrap">
+                        SYSTEM LIVE
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-                    System Live
-                  </span>
                 </div>
-              </div>
-            </div>
           </div>
           <div className="flex items-center gap-1">
             <AboutModal />
@@ -1127,16 +1128,16 @@ export default function Chat() {
               </button>
               
               <div className="relative flex-1 flex items-center">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={isOffline ? "You're offline..." : editingMessage ? "Edit message..." : "Type a message... (Ctrl+B: bold, Ctrl+I: italic)"}
-                  className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary/50 text-white placeholder:text-white/30 rounded-2xl px-6 py-4 pr-14 outline-none transition-all shadow-inner disabled:opacity-50"
-                  disabled={sendMessage.isPending || updateMessage.isPending || isOffline}
-                />
+                      <input
+                        ref={inputRef}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={isOffline ? "You're offline..." : editingMessage ? "Edit message..." : "Type ...!"}
+                        className="w-full bg-white/5 border border-white/10 hover:border-white/20 focus:border-primary/50 text-white placeholder:text-white/30 rounded-2xl px-6 py-4 pr-14 outline-none transition-all shadow-inner disabled:opacity-50"
+                        disabled={sendMessage.isPending || updateMessage.isPending || isOffline}
+                        data-testid="input-message"
+                      />
                 <div className="absolute right-2">
                   <Popover>
                     <PopoverTrigger asChild>
