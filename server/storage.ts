@@ -455,7 +455,7 @@ export class MemStorage implements IStorage {
   }
 
   async createWitnessRequest(initiatorId: number, partnerId: number, witnessId: number): Promise<any> {
-    const id = this.currentDMRequestId++; // Reusing counter for simplicity
+    const id = this.currentDMRequestId++;
     const request = { id, chatInitiatorId: initiatorId, chatPartnerId: partnerId, witnessId, status: "pending", timestamp: new Date() };
     this.witnessRequests.set(id, request);
     return request;
@@ -470,6 +470,10 @@ export class MemStorage implements IStorage {
     if (!request) return undefined;
     const updated = { ...request, status };
     this.witnessRequests.set(requestId, updated);
+    if (status === 'accepted') {
+      const id = this.currentPollId++; // Reusing counter for group chat id
+      this.groupChats.set(id, { id, userIds: [request.chatInitiatorId, request.chatPartnerId], witnessId: request.witnessId, timestamp: new Date() });
+    }
     return updated;
   }
 

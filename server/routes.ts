@@ -460,5 +460,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ success: true });
   });
 
+  // Witness Mode endpoints
+  app.post("/api/witness/request", async (req, res) => {
+    try {
+      const { initiatorId, partnerId, witnessId } = req.body;
+      const request = await storage.createWitnessRequest(initiatorId, partnerId, witnessId);
+      res.status(201).json(request);
+    } catch (e) {
+      res.status(400).json({ message: "Invalid witness request" });
+    }
+  });
+
+  app.get("/api/witness/requests/:userId", async (req, res) => {
+    const userId = parseInt(req.params.userId as string);
+    const requests = await storage.getWitnessRequests(userId);
+    res.json(requests);
+  });
+
+  app.patch("/api/witness/request/:id", async (req, res) => {
+    const id = parseInt(req.params.id as string);
+    const { status } = req.body;
+    const request = await storage.updateWitnessRequestStatus(id, status);
+    if (!request) return res.status(404).json({ message: "Not found" });
+    res.json(request);
+  });
+
   return httpServer;
 }

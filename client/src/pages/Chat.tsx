@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { queryClient } from "@/lib/queryClient";
-import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
 import { MessageBubble } from "@/components/MessageBubble";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, useAddReaction, useRemoveReaction, useUploadImage, useUpdateStatus, useLockMessage, useUnlockMessage, useDeleteMessage, useDMRequests, useSendDMRequest, useRespondDMRequest, useDMPartners, useDirectMessages, useSendDirectMessage, useLogout, usePinDMMessage, useUnpinDMMessage, useMarkDMAsRead, usePinnedDMMessages, useCreatePoll, useVotePoll, usePoll, useUploadFile } from "@/hooks/use-chat";
 import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Link } from "wouter";
@@ -70,6 +70,8 @@ export default function Chat() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const generalFileInputRef = useRef<HTMLInputElement>(null);
+  const [showWitnessModal, setShowWitnessModal] = useState(false);
+  const [selectedWitness, setSelectedWitness] = useState<User | null>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
@@ -339,18 +341,16 @@ export default function Chat() {
     const parts = content.split(/(@\w+)/g);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
-        const username = part.substring(1);
-        return <span key={i} className="text-primary font-bold">{part}</span>;
+        return <span key={i} className="text-primary font-bold px-1 bg-primary/10 rounded">{part}</span>;
       }
       // Hyperlinks [text](url)
       const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/g);
       if (linkMatch) {
-         // This is a simplified markdown parser for links
          const innerParts = part.split(/(\[.*?\]\(.*?\))/g);
          return innerParts.map((inner, j) => {
            const match = inner.match(/\[(.*?)\]\((.*?)\)/);
            if (match) {
-             return <a key={j} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">{match[1]}</a>;
+             return <a key={j} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300 mx-1">{match[1]}</a>;
            }
            return inner;
          });
