@@ -99,9 +99,6 @@ export function AboutModal() {
           </div>
           
           <div className="pt-4 border-t border-white/10 dark:border-white/10 border-gray-200 text-center space-y-1">
-            <p className="text-sm font-medium bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-              OCHAT v2.0
-            </p>
             <p className="text-xs text-white/40 dark:text-white/40 text-gray-400">
               Simple, Fast, Connected.
             </p>

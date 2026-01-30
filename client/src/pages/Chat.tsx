@@ -697,7 +697,7 @@ export default function Chat() {
                 Profile Color
               </label>
               <div className="flex gap-2 flex-wrap">
-                {["#7c3aed", "#ef4444", "#10b981", "#3b82f6", "#f59e0b", "#ec4899"].map(c => (
+                {["#7c3aed", "#ef4444", "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#14b8a6", "#f43f5e", "#8b5cf6", "#06b6d4"].map(c => (
                   <button
                     key={c}
                     onClick={() => setEditColor(c)}
@@ -714,6 +714,24 @@ export default function Chat() {
                   onChange={(e) => setEditColor(e.target.value)}
                   className="w-8 h-8 rounded-full bg-transparent border-0 p-0 overflow-hidden cursor-pointer"
                 />
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-white/10 space-y-4">
+              <h4 className="text-sm font-bold uppercase tracking-wider opacity-40">Preferences</h4>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Notifications</p>
+                  <p className="text-xs text-muted-foreground">Alerts for mentions</p>
+                </div>
+                <Button variant="outline" size="sm" className="h-8">Enable</Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">Privacy Mode</p>
+                  <p className="text-xs text-muted-foreground">Hide online status</p>
+                </div>
+                <Button variant="outline" size="sm" className="h-8">Configure</Button>
               </div>
             </div>
             <Button className="w-full" onClick={handleUpdateProfile}>
@@ -733,45 +751,34 @@ export default function Chat() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-                <div className="flex flex-col">
-                  <h1 className="font-display font-bold text-lg tracking-tight leading-none">OCHAT</h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <ThemeToggle />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowSettingsModal(true)}
-                      className="w-7 h-7 rounded-full hover-elevate"
-                      data-testid="button-settings"
-                      title="Settings"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                    </Button>
-                    <div className="flex items-center gap-1 ml-0.5">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500/40 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-                      </span>
-                      <span className="text-[8px] uppercase tracking-tighter text-muted-foreground font-bold whitespace-nowrap">
-                        SYSTEM LIVE
-                      </span>
-                    </div>
-                  </div>
-                </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <AboutModal />
-            <Link href="/admin">
-              <button
-                className="p-2 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
-                title="Admin Panel"
-                data-testid="button-admin"
-              >
-                <Shield className="w-5 h-5" />
-              </button>
-            </Link>
+          <div className="flex flex-col">
+            <h1 className="font-display font-bold text-lg tracking-tight leading-none">OCHAT</h1>
           </div>
         </div>
+        <div className="flex items-center gap-1.5 px-2">
+          <ThemeToggle className="w-8 h-8" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowSettingsModal(true)}
+            className="w-8 h-8 rounded-lg hover-elevate"
+            data-testid="button-settings"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+          <AboutModal />
+          <Link href="/admin">
+            <button
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
+              title="Admin Panel"
+              data-testid="button-admin"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+          </Link>
+        </div>
+      </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
           <div className="flex items-center justify-between mb-4 px-2">
