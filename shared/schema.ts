@@ -50,6 +50,24 @@ export const directMessages = pgTable("direct_messages", {
   isEdited: boolean("is_edited").default(false),
   isPinned: boolean("is_pinned").default(false),
   isRead: boolean("is_read").default(false),
+  isLocked: boolean("is_locked").default(false),
+  lockedByUserId: integer("locked_by_user_id"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const witnessRequests = pgTable("witness_requests", {
+  id: serial("id").primaryKey(),
+  chatInitiatorId: integer("chat_initiator_id").notNull(),
+  chatPartnerId: integer("chat_partner_id").notNull(),
+  witnessId: integer("witness_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending, accepted, rejected
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const groupChats = pgTable("group_chats", {
+  id: serial("id").primaryKey(),
+  userIds: integer("user_ids").array().notNull(),
+  witnessId: integer("witness_id"),
   timestamp: timestamp("timestamp").defaultNow(),
 });
 

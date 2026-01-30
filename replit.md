@@ -4,6 +4,10 @@
 
 A real-time chat/messenger application built with React frontend and Express backend. Users can join with a username and custom color, send messages, reply to messages, edit their own messages, and see other active users. The application uses polling for real-time updates and stores data in-memory (MemStorage).
 
+## Architectural Guidelines
+- **Strictly Local Database**: This project MUST only use in-memory storage or local file-based storage. NEVER use external databases like PostgreSQL or others unless explicitly requested.
+- **Witness Mode**: Direct chats support adding a third user (Witness) with the consent of all parties.
+
 ## Features
 - **Real-time messaging** with 1-second polling
 - **Photo sharing** with 2MB limit and download button (auto-deleted after 6 hours)
@@ -16,15 +20,19 @@ A real-time chat/messenger application built with React frontend and Express bac
 - **User status** - online/away/busy/offline with visual indicators
 - **Active user tracking** with heartbeat system (60-second threshold)
 - **Manual refresh button** for active users list
-- **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*), Ctrl+U for underline (__text__)
+- **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*), Ctrl+U for underline (__text__), Ctrl+H for Hyperlinks
 - **Direct messaging** - Request/accept workflow for private conversations
+- **DM Actions** - Edit, Delete, and Lock functionality for direct messages
 - **DM pin messages** - Pin and unpin important messages in direct conversations
 - **DM seen notifications** - Visual indicators showing when messages are read
+- **Witness Mode** - Add a 3rd person to direct chats with mutual approval
 - **Username validation** - Max 15 characters, English only (letters, numbers, underscores), reserved usernames blocked
 - **Auto logout** - Username freed when user signs out or closes tab
 - **24 color options** - Vibrant color picker with 6x4 grid
 - **Admin Panel** - Password-protected panel at /admin to manage users and messages (password: admin123)
 - **About Modal** - Info icon showing developer credits (Artin Zomorodian) and app features
+- **Theme Selection** - Post-login toggle for Dark/Light mode
+- **Mentions** - Support for @username mentions in public chat
 
 ## User Preferences
 
