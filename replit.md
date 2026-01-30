@@ -14,10 +14,12 @@ A real-time chat/messenger application built with React frontend and Express bac
 - **User status** - online/away/busy/offline with visual indicators
 - **Active user tracking** with heartbeat system (60-second threshold)
 - **Manual refresh button** for active users list
-- **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*)
+- **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*), Ctrl+U for underline (__text__)
 - **Direct messaging** - Request/accept workflow for private conversations
 - **Username validation** - Reserved usernames blocked, duplicate active usernames prevented
 - **24 color options** - Vibrant color picker with 6x4 grid
+- **Admin Panel** - Password-protected panel at /admin to manage users and messages (password: admin123)
+- **About Modal** - Info icon showing developer credits (Artin Zomorodian) and app features
 
 ## User Preferences
 
@@ -62,6 +64,11 @@ Preferred communication style: Simple, everyday language.
 - `GET /api/dm/partners/:userId` - Get accepted DM partners
 - `GET /api/dm/:userId1/:userId2` - Get direct messages between two users
 - `POST /api/dm` - Send a direct message
+- `GET /api/admin/users` - Get all users (admin)
+- `GET /api/admin/messages` - Get all messages (admin)
+- `DELETE /api/admin/users/:id` - Delete a user (admin)
+- `DELETE /api/admin/messages/:id` - Delete a message (admin)
+- `POST /api/admin/messages/clear` - Clear all messages (admin)
 
 ### Database Schema
 Located in `shared/schema.ts`:
