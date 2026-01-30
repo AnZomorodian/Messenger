@@ -1,8 +1,18 @@
-# Messenger
+# OCHAT
 
 ## Overview
 
-A real-time chat/messenger application built with React frontend and Express backend. Users can join with a username and custom color, send messages, reply to messages, edit their own messages, and see other active users. The application uses polling for real-time updates and stores data in PostgreSQL using Drizzle ORM.
+A real-time chat/messenger application built with React frontend and Express backend. Users can join with a username and custom color, send messages, reply to messages, edit their own messages, and see other active users. The application uses polling for real-time updates and stores data in-memory (MemStorage).
+
+## Features
+- **Real-time messaging** with 1-second polling
+- **Photo sharing** with 2MB limit and download button
+- **Message reactions** with 8 quick-reaction emojis + 96-emoji picker
+- **Reply to messages** with inline preview
+- **Edit messages** (if not locked)
+- **Message locking** - users can lock others' messages to prevent editing
+- **User status** - online/away/busy/offline with visual indicators
+- **Active user tracking** with heartbeat system (60-second threshold)
 
 ## User Preferences
 
@@ -31,15 +41,22 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/users/login` - Create or authenticate user
 - `GET /api/users` - List active users
 - `POST /api/heartbeat` - Update user activity timestamp
-- `GET /api/messages` - Fetch all messages with user and reply data
-- `POST /api/messages` - Create new message
-- `PATCH /api/messages/:id` - Edit message
+- `PATCH /api/users/:id/status` - Update user status (online/away/busy/offline)
+- `GET /api/messages` - Fetch all messages with user, reply data, and reactions
+- `POST /api/messages` - Create new message (supports imageUrl)
+- `PATCH /api/messages/:id` - Edit message (blocked if locked)
 - `DELETE /api/messages/:id` - Delete message
+- `POST /api/messages/:id/lock` - Lock message (prevent editing)
+- `POST /api/messages/:id/unlock` - Unlock message
+- `POST /api/reactions` - Add emoji reaction to message
+- `DELETE /api/reactions` - Remove reaction
+- `POST /api/upload` - Upload image (max 2MB, returns URL)
 
 ### Database Schema
 Located in `shared/schema.ts`:
-- **users**: id, username (unique), color
-- **messages**: id, userId, content, replyToId (self-reference), isEdited, timestamp
+- **users**: id, username (unique), color, status (online/away/busy/offline)
+- **messages**: id, userId, content, imageUrl, replyToId (self-reference), isEdited, isLocked, lockedByUserId, timestamp
+- **reactions**: id, messageId, userId, emoji
 
 ### Build System
 - Development: Vite dev server with HMR, proxied through Express
