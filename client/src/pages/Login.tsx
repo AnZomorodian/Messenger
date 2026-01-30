@@ -14,12 +14,14 @@ const RESERVED_USERNAMES = [
 
 export default function Login() {
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPasswordField, setShowPasswordFields] = useState(false);
   const [color, setColor] = useState("#007AFF");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const loginMutation = useLogin();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedUsername = username.trim();
     
@@ -32,40 +34,30 @@ export default function Login() {
       return;
     }
 
-    if (trimmedUsername.length < 2 || trimmedUsername.length > 15) {
-      toast({
-        variant: "destructive",
-        title: "Invalid username",
-        description: "Username must be 2-15 characters long.",
-      });
-      return;
-    }
-
-    // Only allow English letters, numbers, and underscores
-    const englishOnlyRegex = /^[a-zA-Z0-9_]+$/;
-    if (!englishOnlyRegex.test(trimmedUsername)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid username",
-        description: "Username can only contain English letters, numbers, and underscores.",
-      });
-      return;
-    }
-
-    if (RESERVED_USERNAMES.includes(trimmedUsername.toLowerCase())) {
-      toast({
-        variant: "destructive",
-        title: "Reserved username",
-        description: "This username is reserved. Please choose another.",
-      });
-      return;
+    // Check if user exists and needs password
+    if (!showPasswordField) {
+      try {
+        const res = await fetch(`/api/users/check/${trimmedUsername}`);
+        if (res.ok) {
+          const user = await res.json();
+          if (user.isLocked) {
+            setShowPasswordFields(true);
+            toast({
+              title: "Account Locked",
+              description: "This username requires a password.",
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        // Silently continue if check fails
+      }
     }
 
     loginMutation.mutate(
-      { username, color },
+      { username, color, password: password || undefined },
       {
         onSuccess: (user) => {
-          // Store user session simply in localStorage for this demo
           localStorage.setItem("chat_user", JSON.stringify(user));
           toast({
             title: "Welcome!",
@@ -113,8 +105,30 @@ export default function Login() {
               placeholder="Enter username..."
               className="w-full px-4 py-3 rounded-xl glass-input outline-none transition-all duration-200"
               autoFocus
+              disabled={showPasswordField}
             />
           </div>
+
+          {showPasswordField && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+              <label className="text-sm font-medium ml-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter account password..."
+                className="w-full px-4 py-3 rounded-xl glass-input outline-none transition-all duration-200"
+                autoFocus
+              />
+              <button 
+                type="button" 
+                onClick={() => { setShowPasswordFields(false); setPassword(""); }}
+                className="text-xs text-primary hover:underline ml-1"
+              >
+                Change username
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3">
             <label className="text-sm font-medium ml-1">Color</label>

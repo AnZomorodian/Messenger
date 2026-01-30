@@ -12,6 +12,10 @@ export const users = pgTable("users", {
   status: text("status").notNull().default("online"),
   bio: text("bio"),
   avatar: text("avatar"),
+  password: text("password"),
+  isLocked: boolean("is_locked").default(false),
+  notificationsEnabled: boolean("notifications_enabled").default(true),
+  privacyMode: boolean("privacy_mode").default(false),
 });
 
 export const messages = pgTable("messages", {
@@ -148,6 +152,10 @@ export const updateUserSchema = createInsertSchema(users).pick({
   color: true,
   bio: true,
   avatar: true,
+  password: true,
+  isLocked: true,
+  notificationsEnabled: true,
+  privacyMode: true,
 }).partial();
 
 export type UpdateUser = z.infer<typeof updateUserSchema>;

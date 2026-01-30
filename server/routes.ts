@@ -9,13 +9,24 @@ import fs from "fs";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   
+  app.get("/api/users/check/:username", async (req, res) => {
+    const user = await storage.getUserByUsername(req.params.username);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ isLocked: user.isLocked });
+  });
+
   app.post(api.users.login.path, async (req, res) => {
     try {
-      const input = insertUserSchema.parse(req.body);
-      let user = await storage.getUserByUsername(input.username);
+      const { username, color, password } = req.body;
+      let user = await storage.getUserByUsername(username);
+      
       if (!user) {
-        user = await storage.createUser(input);
+        user = await storage.createUser({ username, color });
       } else {
+        if (user.isLocked && user.password !== password) {
+          return res.status(401).json({ message: "Invalid password for this account" });
+        }
+        
         const activeUsers = await storage.getActiveUsers();
         const isActive = activeUsers.some(u => u.id === user!.id);
         if (isActive) {

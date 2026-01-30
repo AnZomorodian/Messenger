@@ -116,7 +116,11 @@ export class MemStorage implements IStorage {
       color: insertUser.color || "#7c3aed", 
       status: "online",
       bio: insertUser.bio || null,
-      avatar: insertUser.avatar || null
+      avatar: insertUser.avatar || null,
+      password: insertUser.password || null,
+      isLocked: insertUser.isLocked || false,
+      notificationsEnabled: insertUser.notificationsEnabled ?? true,
+      privacyMode: insertUser.privacyMode || false
     };
     this.users.set(id, user);
     this.userActivity.set(id, new Date());

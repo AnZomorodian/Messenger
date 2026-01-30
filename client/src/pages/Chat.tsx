@@ -83,6 +83,10 @@ export default function Chat() {
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editColor, setEditColor] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [privacyMode, setPrivacyMode] = useState(false);
 
   // Initialize edit fields when user is loaded
   useEffect(() => {
@@ -90,6 +94,9 @@ export default function Chat() {
       setEditName(user.username);
       setEditBio(user.bio || "");
       setEditColor(user.color || "#7c3aed");
+      setIsLocked(user.isLocked || false);
+      setNotificationsEnabled(user.notificationsEnabled ?? true);
+      setPrivacyMode(user.privacyMode || false);
     }
   }, [user]);
 
@@ -98,7 +105,15 @@ export default function Chat() {
     fetch(`/api/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: editName, bio: editBio, color: editColor })
+      body: JSON.stringify({ 
+        username: editName, 
+        bio: editBio, 
+        color: editColor,
+        password: editPassword || undefined,
+        isLocked,
+        notificationsEnabled,
+        privacyMode
+      })
     })
     .then(async res => {
       const isJson = res.headers.get('content-type')?.includes('application/json');
@@ -724,14 +739,60 @@ export default function Chat() {
                   <p className="text-sm font-medium">Notifications</p>
                   <p className="text-xs text-muted-foreground">Alerts for mentions</p>
                 </div>
-                <Button variant="outline" size="sm" className="h-8">Enable</Button>
+                <Button 
+                  variant={notificationsEnabled ? "default" : "outline"} 
+                  size="sm" 
+                  className="h-8"
+                  onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                >
+                  {notificationsEnabled ? "Enabled" : "Disabled"}
+                </Button>
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium">Privacy Mode</p>
                   <p className="text-xs text-muted-foreground">Hide online status</p>
                 </div>
-                <Button variant="outline" size="sm" className="h-8">Configure</Button>
+                <Button 
+                  variant={privacyMode ? "default" : "outline"} 
+                  size="sm" 
+                  className="h-8"
+                  onClick={() => setPrivacyMode(!privacyMode)}
+                >
+                  {privacyMode ? "Active" : "Inactive"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/10 space-y-4">
+              <h4 className="text-sm font-bold uppercase tracking-wider opacity-40 text-red-400">Security</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Account Lock</p>
+                    <p className="text-xs text-muted-foreground">Require password to login</p>
+                  </div>
+                  <Button 
+                    variant={isLocked ? "destructive" : "outline"} 
+                    size="sm" 
+                    className="h-8"
+                    onClick={() => setIsLocked(!isLocked)}
+                  >
+                    {isLocked ? "Locked" : "Unlocked"}
+                  </Button>
+                </div>
+                {isLocked && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                    <label className="text-xs font-medium opacity-60">Set Login Password</label>
+                    <input
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Enter security key..."
+                      className="w-full bg-muted border border-border rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <Button className="w-full" onClick={handleUpdateProfile}>
@@ -747,15 +808,8 @@ export default function Chat() {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-          <div className="flex flex-col">
-            <h1 className="font-display font-bold text-lg tracking-tight leading-none">OCHAT</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 px-2">
+        <div className="flex items-center gap-2">
+          <h1 className="font-display font-bold text-lg tracking-tight leading-none mr-2">OCHAT</h1>
           <ThemeToggle className="w-8 h-8" />
           <Button
             variant="ghost"
