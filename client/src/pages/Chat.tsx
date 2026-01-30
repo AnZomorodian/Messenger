@@ -8,6 +8,7 @@ import { useUsers, useMessages, useSendMessage, useUpdateMessage, useHeartbeat, 
 import { Send, LogOut, Users, Loader2, Sparkles, X, CornerDownRight, Edit2, Smile, ImagePlus, Circle, Clock, MinusCircle, RefreshCw, MessageCircle, Check, XCircle, ArrowLeft, Shield, Pin, PinOff, FileUp, BarChart3, CheckCheck, Lock, Unlock, Trash2, Timer, Bell, Play, Pause, Settings, UserCircle, Palette } from "lucide-react";
 import { AboutModal } from "@/components/AboutModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import type { User, Message, UserStatus } from "@shared/schema";
