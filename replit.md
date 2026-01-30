@@ -14,6 +14,10 @@ A real-time chat/messenger application built with React frontend and Express bac
 - **User status** - online/away/busy/offline with visual indicators
 - **Active user tracking** with heartbeat system (60-second threshold)
 - **Manual refresh button** for active users list
+- **Text formatting** - Ctrl+B for bold (**text**), Ctrl+I for italic (*text*)
+- **Direct messaging** - Request/accept workflow for private conversations
+- **Username validation** - Reserved usernames blocked, duplicate active usernames prevented
+- **24 color options** - Vibrant color picker with 6x4 grid
 
 ## User Preferences
 
@@ -52,12 +56,20 @@ Preferred communication style: Simple, everyday language.
 - `POST /api/reactions` - Add emoji reaction to message
 - `DELETE /api/reactions` - Remove reaction
 - `POST /api/upload` - Upload image (max 2MB, returns URL)
+- `POST /api/dm/request` - Send DM request to another user
+- `POST /api/dm/respond` - Accept or reject a DM request
+- `GET /api/dm/requests/:userId` - Get pending DM requests for user
+- `GET /api/dm/partners/:userId` - Get accepted DM partners
+- `GET /api/dm/:userId1/:userId2` - Get direct messages between two users
+- `POST /api/dm` - Send a direct message
 
 ### Database Schema
 Located in `shared/schema.ts`:
 - **users**: id, username (unique), color, status (online/away/busy/offline)
 - **messages**: id, userId, content, imageUrl, replyToId (self-reference), isEdited, isLocked, lockedByUserId, timestamp
 - **reactions**: id, messageId, userId, emoji
+- **dmRequests**: id, fromUserId, toUserId, status (pending/accepted/rejected), timestamp
+- **directMessages**: id, fromUserId, toUserId, content, timestamp
 
 ### Build System
 - Development: Vite dev server with HMR, proxied through Express
